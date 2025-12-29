@@ -10,15 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Node.js (latest LTS)
+      # 2. Setup Node.js on CI runner (optional)
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "lts/*"
 
-      # 1. Copy full project (excluding node_modules) to EC2
+      # 3. Copy full project (except node_modules) to EC2
       - name: Copy project to EC2
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -26,11 +28,12 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           port: 22
-          source: ".next,.gitignore,pages,components,public,package.json,package-lock.json,next.config.js"
+          source: "*,.next,.gitignore"
+          exclude: "node_modules"
           target: "/home/${{ secrets.EC2_USER }}/apps/web"
 
-      # 2. Build and restart on EC2
-      - name: Build and restart frontend
+      # 4. Build and restart on EC2
+      - name: Build and restart frontend on EC2
         uses: appleboy/ssh-action@v0.1.5
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -39,6 +42,14 @@ jobs:
           port: 22
           script: |
             cd ~/apps/web
+
+            # Fix PATH for npm and pm2
+            export PATH=$PATH:/usr/local/bin
+
+            # Optional: load profile if using nvm
+            [ -s "$HOME/.profile" ] && source "$HOME/.profile"
+
+            # Install dependencies, build, and restart PM2
             npm install --production
             npm run build
             pm2 restart web || pm2 start npm --name "web" -- start

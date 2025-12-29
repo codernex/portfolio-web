@@ -41,13 +41,17 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           port: 22
           script: |
+            # Load NVM if it exists
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # Or if Node is installed globally, add to PATH
+            export PATH="/usr/local/bin:/usr/bin:$PATH"
+
+            # Verify npm is available
+            which npm || (echo "npm not found in PATH" && exit 1)
+
             cd ~/apps/web
-
-            # Fix PATH for npm and pm2
-            export PATH=$PATH:/usr/local/bin
-
-            # Optional: load profile if using nvm
-            [ -s "$HOME/.profile" ] && source "$HOME/.profile"
 
             # Install dependencies, build, and restart PM2
             npm install --production

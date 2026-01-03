@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
-import Navbar from "@/components/shared/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,9 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body {...geistMono.style} className="bg-zinc-950">
-        <Navbar />
         {/* Add pt-16 to push all content exactly below the 64px (h-16) navbar */}
-        <div className="pt-16">{children}</div>
+        <SessionProvider>{children}</SessionProvider>
+        <Toaster />
       </body>
     </html>
   );

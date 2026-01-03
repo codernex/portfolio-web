@@ -143,7 +143,7 @@ export default function HeroSection() {
           <Button
             size="lg"
             variant="outline"
-            className="border-zinc-700 bg-transparent hover:bg-zinc-900 hover:text-white"
+            className="border-zinc-700 bg-transparent hover:bg-zinc-900 hover:text-white cursor-pointer"
           >
             Download CV
           </Button>
@@ -162,12 +162,6 @@ export default function HeroSection() {
             className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 transition-all hover:border-emerald-500 hover:bg-zinc-800"
           >
             <Linkedin className="h-5 w-5" />
-          </a>
-          <a
-            href="https://twitter.com"
-            className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 transition-all hover:border-emerald-500 hover:bg-zinc-800"
-          >
-            <Twitter className="h-5 w-5" />
           </a>
           <a
             href="mailto:borhan.dev@gmail.com"

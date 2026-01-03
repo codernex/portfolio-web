@@ -16,12 +16,36 @@ export interface Project {
   updatedAt: string;
 }
 
+export type BlockType =
+  | "paragraph"
+  | "heading1"
+  | "heading2"
+  | "heading3"
+  | "bulletList"
+  | "numberedList"
+  | "quote"
+  | "code"
+  | "image"
+  | "checklist";
+
+export interface ContentBlock {
+  id: string;
+  type: BlockType;
+  content: string;
+  metadata?: {
+    url?: string;
+    alt?: string;
+    language?: string;
+    checked?: boolean;
+  };
+}
+
 export interface Blog {
   id: string;
   title: string;
   slug: string;
   excerpt: string;
-  content: string;
+  content: ContentBlock[];
   featuredImage: string;
   author: User;
   tags: Tag[];
@@ -34,15 +58,16 @@ export interface Blog {
   updatedAt: string;
 }
 
+// types/experience.ts
 export interface Experience {
-  id: string;
-  company: string;
+  id?: string;
   role: string;
-  description: string;
+  company: string;
+  location?: string;
+  period: string;
+  responsibilities: string[];
+  achievements: string[];
   technologies: string[];
-  startDate: string;
-  endDate?: string;
-  logo?: string;
   order: number;
 }
 

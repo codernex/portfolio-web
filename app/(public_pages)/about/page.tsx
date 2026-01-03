@@ -107,7 +107,7 @@ export default function AboutPage() {
                         <span className="text-zinc-500">Backend:</span>{" "}
                         <span className="text-zinc-300">Nest.js / Node.js</span>
                         <span className="text-zinc-500">Cloud:</span>{" "}
-                        <span className="text-zinc-300">AWS (EC2/S3)</span>
+                        <span className="text-zinc-300">AWS</span>
                       </div>
                     </div>
 

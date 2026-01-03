@@ -1,33 +1,48 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  ChevronDown,
+  Cpu,
+  Globe,
+  LayoutDashboard,
+  Lock,
+  LogOut,
+  Menu,
+  Terminal,
+  X,
+} from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Terminal, Menu, X, Cpu, Globe } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const session = useSession();
 
-  // 1. Solid background logic for scroll
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 2. Critical: Close menu automatically when a link is clicked (route changes)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsOpen(false);
-    // Re-enable scrolling when menu closes
     document.body.style.overflow = "unset";
   }, [pathname]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
-    // Prevent background scrolling when menu is open
     if (!isOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -46,13 +61,13 @@ export default function Navbar() {
     <nav
       className={`fixed top-0 z-[100] w-full transition-all duration-300 ${
         scrolled || isOpen
-          ? "border-b border-zinc-800 bg-zinc-950" // Solid background, no transparency
+          ? "border-b border-zinc-800 bg-zinc-950"
           : "bg-transparent"
       }`}
     >
       <div className="container mx-auto max-w-7xl px-6">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo - High z-index to stay above drawer */}
+          {/* Logo */}
           <Link
             href="/"
             className="flex items-center gap-2.5 group relative z-[110]"
@@ -92,7 +107,46 @@ export default function Navbar() {
                 </Link>
               );
             })}
-            <div className="ml-4 h-4 w-[1px] bg-zinc-800" />
+
+            <div className="mx-2 h-4 w-[1px] bg-zinc-800" />
+
+            {/* Login Button - Desktop */}
+            {session.status === "authenticated" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-emerald-500/50 bg-emerald-500/10 font-mono text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all outline-none cursor-pointer">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>{session.data?.user?.name || "ADMIN"}</span>
+                  <ChevronDown size={12} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-zinc-950 border-zinc-800 text-zinc-400 font-mono text-xs w-48">
+                  <DropdownMenuLabel className="text-zinc-500">
+                    SESSION_CONTROLS
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-zinc-800" />
+                  <DropdownMenuItem className="hover:bg-zinc-900 hover:text-emerald-400 cursor-pointer gap-2">
+                    <Link
+                      href="/dashboard/projects"
+                      className="flex items-center gap-2 w-full"
+                    >
+                      <LayoutDashboard size={14} /> ./open_dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-red-400 hover:bg-red-500/10 hover:text-red-400 cursor-pointer gap-2"
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                  >
+                    <LogOut size={14} /> terminate_session
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/5 font-mono text-xs font-bold text-emerald-500 hover:bg-emerald-500 hover:text-black transition-all"
+              >
+                sudo login
+              </Link>
+            )}
 
             {/* System Status Mockup */}
             <div className="ml-4 hidden lg:flex items-center gap-4 font-mono text-xs text-zinc-600">
@@ -107,7 +161,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile Menu Toggle - Fixed z-index and interaction */}
           <button
             className="md:hidden relative z-[110] text-zinc-400 hover:text-white p-2"
             onClick={toggleMenu}
@@ -118,7 +171,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer - Fixed Transparency and Logic */}
+      {/* Mobile Navigation Drawer */}
       <div
         className={`fixed inset-0 z-[105] w-full bg-zinc-950 transition-all duration-300 ease-in-out md:hidden ${
           isOpen
@@ -131,12 +184,12 @@ export default function Navbar() {
             Terminal_Navigation_Menu
           </div>
 
-          <div className="flex flex-col space-y-8">
+          <div className="flex flex-col space-y-6">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 href={link.path}
-                className="group flex items-center justify-between font-mono text-3xl text-zinc-100 hover:text-emerald-400 transition-colors"
+                className="group flex items-center justify-between font-mono text-2xl text-zinc-100 hover:text-emerald-400 transition-colors"
               >
                 <span className="flex items-center">
                   <span className="text-emerald-500 mr-4">{">"}</span>
@@ -147,12 +200,21 @@ export default function Navbar() {
                 </span>
               </Link>
             ))}
+
+            <div className="pt-4">
+              <Link
+                href="/login"
+                className="flex w-full items-center justify-center gap-3 rounded-lg bg-emerald-500 py-4 font-mono text-lg font-bold text-black"
+              >
+                <Lock size={20} />
+                INITIALIZE_LOGIN
+              </Link>
+            </div>
           </div>
 
-          {/* System Info Footer for Mobile */}
           <div className="mt-auto pt-8 border-t border-zinc-900 font-mono text-xs text-zinc-500 space-y-2">
-            <p>Engineer: Borhan Uddin</p>
-            <p>Base_Loc: Khulna, Bangladesh</p>
+            <p>Engineer: Borhan Uddin [cite: 1]</p>
+            <p>Base_Loc: Khulna, Bangladesh [cite: 2]</p>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Status: SESSION_ACTIVE</span>

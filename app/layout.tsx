@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Borhan Uddin | Full-Stack Engineer",
+  title: "Codernex (Borhan Uddin) | Full-Stack Engineer",
   description:
     "Software Engineer II specializing in high-performance backend architecture with NestJS and modern frontend experiences with Next.js.",
   keywords: [
@@ -60,7 +60,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body {...geistMono.style} className="bg-zinc-950">
-        {/* Add pt-16 to push all content exactly below the 64px (h-16) navbar */}
         <SessionProvider>{children}</SessionProvider>
         <Toaster />
       </body>

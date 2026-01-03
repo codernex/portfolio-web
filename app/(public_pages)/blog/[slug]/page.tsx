@@ -1,20 +1,21 @@
+import ContentRenderer from "@/components/ContentRender";
 import { Blog } from "@/types";
+import { format } from "date-fns";
 import {
   ArrowLeft,
+  Bookmark,
+  Calendar,
+  ChevronRight,
   Clock,
   Eye,
   Share2,
-  Bookmark,
-  ChevronRight,
-  Terminal,
-  Calendar,
-  User as UserIcon,
   ShieldCheck,
+  Terminal,
+  User as UserIcon,
 } from "lucide-react";
+import { Metadata } from "next";
 import Link from "next/link";
-import { format } from "date-fns";
 import { notFound } from "next/navigation";
-import ContentRenderer from "@/components/ContentRender";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -32,6 +33,65 @@ async function getBlogPost(slug: string): Promise<Blog | null> {
   } catch (error) {
     return null;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  // Fetch the blog data from your NestJS backend
+  const blog = await getBlogPost(slug);
+
+  if (!blog) {
+    return {
+      title: "Entry Not Found | Codernex",
+    };
+  }
+
+  const title = blog.seoTitle || blog.title;
+  const description = blog.seoDescription || blog.excerpt || "";
+  const keywords = blog.seoKeywords
+    ? blog.seoKeywords.split(",").map((k) => k.trim())
+    : [];
+
+  return {
+    title: `${title} | Codernex Journal`,
+    description: description,
+    keywords: keywords,
+    authors: [{ name: "Borhan Uddin (Codernex)" }],
+
+    openGraph: {
+      title: title,
+      description: description,
+      url: `https://codernex.dev/blog/${blog.slug}`,
+      siteName: "Codernex Org",
+      type: "article",
+      publishedTime: blog.publishedAt || blog.createdAt,
+      authors: ["Borhan Uddin"],
+      images: [
+        {
+          url: blog.featuredImage || "/og-image.jpg",
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: title,
+      description: description,
+      images: [blog.featuredImage || "/og-image.jpg"],
+      creator: "@codernex",
+    },
+
+    // Technical SEO: Prevents duplicate content issues
+    alternates: {
+      canonical: `https://codernex.dev/blog/${blog.slug}`,
+    },
+  };
 }
 
 export default async function BlogDetailPage({ params }: PageProps) {

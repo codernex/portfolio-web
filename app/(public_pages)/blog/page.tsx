@@ -9,6 +9,28 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: unknown }>;
 }
 
+export const metadata = {
+  title: "Engineering Blog | Codernex (Borhan Uddin)",
+  description:
+    "Technical articles and deep dives into Backend Architecture, NestJS optimization, TypeScript best practices, and Next.js performance tuning.",
+  keywords: [
+    "Software Engineering Blog",
+    "NestJS Tutorials",
+    "Backend Development Guides",
+    "TypeScript Best Practices",
+    "Next.js 15 Performance",
+    "System Architecture Articles",
+  ],
+  openGraph: {
+    title: "Codernex Journal | Insights for Engineers",
+    description:
+      "Sharing technical knowledge on building resilient and scalable systems.",
+    url: "https://codernex.dev/blog",
+    type: "article",
+    images: [{ url: "/og-blog.jpg", width: 1200, height: 630 }],
+  },
+};
+
 export default async function BlogArchivePage({ searchParams }: PageProps) {
   const queryParams = await searchParams;
   return (

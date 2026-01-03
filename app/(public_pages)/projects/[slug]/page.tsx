@@ -4,12 +4,30 @@ import { apiInstance } from "@/lib/axios";
 import { Project } from "@/types";
 import ProjectDetailContent from "./ProjectDetailContent";
 import ProjectDetailSkeleton from "./loading";
+import { Metadata } from "next";
 
-export default async function ProjectPage({
-  params,
-}: {
+type PageParams = {
   params: Promise<{ slug: string }>;
-}) {
+};
+
+export async function generateMetadata({
+  params,
+}: PageParams): Promise<Metadata> {
+  const { slug } = await params;
+  const project = await fetchProjectFromAPI(slug); // Your API call
+
+  return {
+    title: `${project.title} | Codernex Project`,
+    description: project.shortDescription,
+    keywords: project.technologies,
+    openGraph: {
+      images: [project.thumbnailUrl],
+      description: project.shortDescription,
+    },
+  };
+}
+
+export default async function ProjectPage({ params }: PageParams) {
   const { slug } = await params;
 
   return (
@@ -20,10 +38,13 @@ export default async function ProjectPage({
 }
 
 async function ProjectFetcher({ slug }: { slug: string }) {
-  const res = await apiInstance.get<{ data: Project }>(`/project/${slug}`);
-  const project = res.data.data;
-
+  const project = await fetchProjectFromAPI(slug);
   if (!project) return notFound();
 
   return <ProjectDetailContent project={project} />;
 }
+
+const fetchProjectFromAPI = async (slug: string) => {
+  const res = await apiInstance.get<{ data: Project }>(`/project/${slug}`);
+  return res.data.data;
+};

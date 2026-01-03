@@ -41,24 +41,40 @@ export interface ContentBlock {
   };
 }
 
+export enum BlogStatus {
+  DRAFT = "draft",
+  PUBLISHED = "published",
+}
+
 export interface Blog {
   id: string;
   title: string;
   slug: string;
-  excerpt: string;
+  excerpt: string | null;
   content: ContentBlock[];
-  featuredImage: string;
-  author: User;
+  featuredImage: string | null;
+
+  // Relations
+  author?: User;
+  authorId: string;
   tags: Tag[];
+
+  // Stats
   readingTime: number;
   views: number;
   featured: boolean;
-  status: "draft" | "published";
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
+  // SEO Metadata
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoKeywords: string | null;
+
+  // State & Timestamps
+  status: BlogStatus;
+  publishedAt: string | null; // ISO Date String from JSON
+  createdAt: string; // ISO Date String
+  updatedAt: string; // ISO Date String
+}
 // types/experience.ts
 export interface Experience {
   id?: string;

@@ -152,7 +152,10 @@ export function BlogListTable({ initialData, meta }: BlogListTableProps) {
                       >
                         <Eye size={14} /> view_live
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 cursor-pointer hover:bg-zinc-900 hover:text-emerald-400">
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/dashboard/blogs/${blog.slug}/edit`)}
+                        className="gap-2 cursor-pointer hover:bg-zinc-900 hover:text-emerald-400"
+                      >
                         <Edit size={14} /> edit_content
                       </DropdownMenuItem>
                       <DropdownMenuItem

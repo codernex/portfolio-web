@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Codernex (Borhan Uddin) | Full-Stack Engineer",
   description:
     "Software Engineer II specializing in high-performance backend architecture with NestJS and modern frontend experiences with Next.js.",
@@ -50,6 +50,7 @@ export const metadata = {
       "Building scalable systems and high-performance web applications.",
     images: ["/og-image.png"],
   },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({

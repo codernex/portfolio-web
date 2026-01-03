@@ -91,6 +91,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `https://codernex.dev/blog/${blog.slug}`,
     },
+    manifest: "/site.webmanifest",
   };
 }
 

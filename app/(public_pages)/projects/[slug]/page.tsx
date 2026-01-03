@@ -24,6 +24,7 @@ export async function generateMetadata({
       images: [project.thumbnailUrl],
       description: project.shortDescription,
     },
+    manifest: "/site.webmanifest",
   };
 }
 

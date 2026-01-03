@@ -16,6 +16,7 @@ export const metadata = {
     description: "Let's discuss your next high-performance system build.",
     url: "https://codernex.dev/contact",
   },
+  manifest: "/site.webmanifest",
 };
 
 export default function Page() {

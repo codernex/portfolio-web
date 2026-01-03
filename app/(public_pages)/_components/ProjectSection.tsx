@@ -1,114 +1,131 @@
-"use client";
 import { Project } from "@/types";
-import { ExternalLink, Github, Folder, Zap } from "lucide-react";
+import { ChevronRight, ExternalLink, Github, Zap } from "lucide-react";
+import Link from "next/link";
 
-const STATIC_PROJECTS: Project[] = [
-  {
-    id: "1",
-    title: "Nexus Dashboard",
-    slug: "nexus-dashboard",
-    shortDescription:
-      "A real-time monitoring system for microservices with built-in log aggregation.",
-    fullDescription: "",
-    thumbnailUrl:
-      "https://images.unsplash.com/photo-1551288049-bbbda536339a?q=80&w=2070",
-    images: [],
-    technologies: ["Next.js", "NestJS", "PostgreSQL", "Redis"],
-    tags: [{ id: "t1", name: "Fullstack", slug: "fullstack", type: "project" }],
-    liveUrl: "https://demo.com",
-    githubUrl: "https://github.com",
-    featured: true,
-    status: "published",
-    createdAt: "2024-01-01",
-    updatedAt: "2024-01-01",
-  },
-  {
-    id: "2",
-    title: "Terminal UI Kit",
-    slug: "terminal-ui",
-    shortDescription:
-      "A headless component library for building terminal-themed web applications.",
-    fullDescription: "",
-    thumbnailUrl:
-      "https://images.unsplash.com/photo-1629654297299-c8506221ca97?q=80&w=1974",
-    images: [],
-    technologies: ["React", "TailwindCSS", "Framer Motion"],
-    tags: [{ id: "t2", name: "UI/UX", slug: "ui-ux", type: "project" }],
-    githubUrl: "https://github.com",
-    featured: false,
-    status: "published",
-    createdAt: "2024-02-15",
-    updatedAt: "2024-02-15",
-  },
-];
+async function getFeaturedProjects(): Promise<Project[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/project/featured`,
+      {
+        next: {
+          revalidate: 3000,
+        },
+      }
+    );
+    const result = (await res.json()) as { data: Project[] };
+    return result.data || [];
+  } catch (error) {
+    console.error("FEATURED_PROJECTS_FETCH_ERROR:", error);
+    return [];
+  }
+}
 
-export default function ProjectsSection() {
+export default async function ProjectsSection() {
+  const projects = await getFeaturedProjects();
+  console.log("TCL: ProjectsSection -> projects", projects);
+
   return (
-    <section className="relative border-t border-zinc-800 px-6 py-24">
+    <section className="relative border-t border-zinc-900 px-6 py-24 bg-zinc-950">
       <div className="container mx-auto max-w-6xl">
-        <div className="mb-12">
-          <span className="font-mono text-sm text-emerald-500">
-            <span className="opacity-60">$ </span>ls ./projects --featured
-          </span>
-          <h2 className="mt-2 text-4xl font-bold text-white">Selected Works</h2>
+        <div className="flex items-end justify-between mb-12">
+          <div>
+            <span className="font-mono text-sm text-emerald-500">
+              <span className="opacity-60">$ </span>ls ./projects --featured
+            </span>
+            <h2 className="mt-2 text-4xl font-bold text-white tracking-tighter">
+              Selected Works
+            </h2>
+          </div>
+
+          <Link
+            href="/projects"
+            className="hidden md:flex items-center gap-2 font-mono text-xs text-zinc-500 hover:text-emerald-500 transition-colors"
+          >
+            VIEW_FULL_PORTFOLIO <ChevronRight size={14} />
+          </Link>
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
-          {STATIC_PROJECTS.map((project) => (
-            <div
-              key={project.id}
-              className="group relative rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden hover:border-emerald-500/40 transition-all duration-300"
-            >
-              <div className="relative h-48 w-full overflow-hidden border-b border-zinc-800">
-                <img
-                  src={project.thumbnailUrl}
-                  alt={project.title}
-                  className="h-full w-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
-                />
-                {project.featured && (
-                  <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-bold text-black font-bold">
-                    <Zap className="h-3 w-3" /> FEATURED
+          {projects.length > 0 ? (
+            projects.map((project) => (
+              <div
+                key={project.id}
+                className="group relative rounded-2xl border border-zinc-900 bg-zinc-900/10 overflow-hidden hover:border-emerald-500/30 transition-all duration-500"
+              >
+                {/* Visual Preview */}
+                <div className="relative h-56 w-full overflow-hidden border-b border-zinc-900">
+                  <img
+                    src={project.thumbnailUrl}
+                    alt={project.title}
+                    className="h-full w-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0 group-hover:scale-105"
+                  />
+                  {project.featured && (
+                    <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-black text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                      <Zap className="h-3 w-3 fill-black" /> FEATURED_NODE
+                    </div>
+                  )}
+                </div>
+
+                {/* Body */}
+                <div className="p-8">
+                  <h3 className="mb-3 text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors tracking-tight">
+                    {project.title}
+                  </h3>
+                  <p className="mb-6 text-zinc-500 text-sm leading-relaxed line-clamp-2">
+                    {project.shortDescription}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 mb-8">
+                    {project.technologies.map((tech) => (
+                      <span
+                        key={tech}
+                        className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1 text-[10px] text-zinc-400 font-mono group-hover:border-emerald-500/20 group-hover:text-emerald-500/70 transition-colors"
+                      >
+                        {tech}
+                      </span>
+                    ))}
                   </div>
-                )}
-              </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-2xl font-bold text-white">
-                  {project.title}
-                </h3>
-                <p className="mb-4 text-zinc-400 text-sm line-clamp-2">
-                  {project.shortDescription}
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {project.technologies.map((tech) => (
-                    <span
-                      key={tech}
-                      className="rounded border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[11px] text-emerald-500 font-mono italic"
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-5">
+                      {project.githubUrl && (
+                        <a
+                          href={project.githubUrl}
+                          target="_blank"
+                          className="text-zinc-600 hover:text-white transition-colors"
+                        >
+                          <Github className="h-5 w-5" />
+                        </a>
+                      )}
+                      {project.liveUrl && (
+                        <a
+                          href={project.liveUrl}
+                          target="_blank"
+                          className="text-zinc-600 hover:text-white transition-colors"
+                        >
+                          <ExternalLink className="h-5 w-5" />
+                        </a>
+                      )}
+                    </div>
+
+                    <Link
+                      href={`/projects/${project.slug}`}
+                      className="text-xs font-mono font-bold text-emerald-500/60 hover:text-emerald-500 transition-colors"
                     >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-4">
-                  {project.githubUrl && (
-                    <a
-                      href={project.githubUrl}
-                      className="text-zinc-500 hover:text-white transition-colors"
-                    >
-                      <Github className="h-5 w-5" />
-                    </a>
-                  )}
-                  {project.liveUrl && (
-                    <a
-                      href={project.liveUrl}
-                      className="text-zinc-500 hover:text-white transition-colors"
-                    >
-                      <ExternalLink className="h-5 w-5" />
-                    </a>
-                  )}
+                      DETAILS_VIEW
+                    </Link>
+                  </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="col-span-full py-20 text-center border border-dashed border-zinc-900 rounded-2xl">
+              <p className="font-mono text-xs text-zinc-600">
+                [SYSTEM_NOTICE]: No featured projects identified in current
+                registry.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </section>

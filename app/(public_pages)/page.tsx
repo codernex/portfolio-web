@@ -1,5 +1,6 @@
-"use client";
-
+import { BlogSkeleton } from "@/components/skeletons/BlogSkeleton";
+import { ProjectSkeleton } from "@/components/skeletons/ProjectSkeleton";
+import { Suspense } from "react";
 import AboutSection from "./_components/AboutSection";
 import BlogSection from "./_components/BlogSection";
 import ContactSection from "./_components/ContactSection";
@@ -19,8 +20,12 @@ export default function Home() {
         <AboutSection />
         <ExperienceSection />
         <SkillsSection />
-        <ProjectsSection />
-        <BlogSection />
+        <Suspense fallback={<ProjectSkeleton />}>
+          <ProjectsSection />
+        </Suspense>
+        <Suspense fallback={<BlogSkeleton />}>
+          <BlogSection />
+        </Suspense>
         <ContactSection />
       </main>
 

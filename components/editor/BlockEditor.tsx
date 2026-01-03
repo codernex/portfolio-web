@@ -1,4 +1,3 @@
-// components/editor/BlockEditor.tsx
 "use client";
 
 import { BlockType, ContentBlock } from "@/types";
@@ -41,6 +40,275 @@ function placeCaretAtEnd(el: HTMLElement) {
   const sel = window.getSelection();
   sel?.removeAllRanges();
   sel?.addRange(range);
+}
+
+/* -------------------------- HTML/Markdown Parser ------------------------- */
+
+function parseHtmlToBlocks(html: string): ContentBlock[] {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const blocks: ContentBlock[] = [];
+
+  const traverse = (node: Node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as HTMLElement;
+      const tagName = element.tagName.toLowerCase();
+      const textContent = element.textContent?.trim() || "";
+
+      // Skip empty elements
+      if (!textContent && !["img", "hr", "br"].includes(tagName)) {
+        Array.from(element.childNodes).forEach(traverse);
+        return;
+      }
+
+      switch (tagName) {
+        case "h1":
+          blocks.push({
+            id: generateId(),
+            type: "heading1",
+            content: textContent,
+          });
+          break;
+        case "h2":
+          blocks.push({
+            id: generateId(),
+            type: "heading2",
+            content: textContent,
+          });
+          break;
+        case "h3":
+        case "h4":
+        case "h5":
+        case "h6":
+          blocks.push({
+            id: generateId(),
+            type: "heading3",
+            content: textContent,
+          });
+          break;
+        case "blockquote":
+          blocks.push({
+            id: generateId(),
+            type: "quote",
+            content: textContent,
+          });
+          break;
+        case "pre":
+        case "code":
+          const codeContent =
+            element.querySelector("code")?.textContent || textContent;
+          blocks.push({
+            id: generateId(),
+            type: "code",
+            content: codeContent,
+            metadata: {
+              language:
+                element.getAttribute("class")?.replace("language-", "") ||
+                "javascript",
+            },
+          });
+          break;
+        case "ul":
+          element.querySelectorAll("li").forEach((li) => {
+            const content = li.textContent?.trim() || "";
+            if (content) {
+              blocks.push({ id: generateId(), type: "bulletList", content });
+            }
+          });
+          break;
+        case "ol":
+          element.querySelectorAll("li").forEach((li) => {
+            const content = li.textContent?.trim() || "";
+            if (content) {
+              blocks.push({ id: generateId(), type: "numberedList", content });
+            }
+          });
+          break;
+        case "img":
+          blocks.push({
+            id: generateId(),
+            type: "image",
+            content: element.getAttribute("alt") || "",
+            metadata: {
+              url: element.getAttribute("src") || "",
+              alt: element.getAttribute("alt") || "",
+            },
+          });
+          break;
+        case "p":
+          if (textContent) {
+            // Check if paragraph contains code
+            if (element.querySelector("code")) {
+              const code = element.querySelector("code");
+              if (code && code.textContent) {
+                blocks.push({
+                  id: generateId(),
+                  type: "paragraph",
+                  content: textContent,
+                });
+              }
+            } else {
+              blocks.push({
+                id: generateId(),
+                type: "paragraph",
+                content: textContent,
+              });
+            }
+          }
+          break;
+        case "div":
+        case "article":
+        case "section":
+          // Traverse children for container elements
+          Array.from(element.childNodes).forEach(traverse);
+          break;
+        default:
+          // For inline elements or unknown tags, extract text
+          if (textContent && !element.closest("ul, ol, pre, code")) {
+            blocks.push({
+              id: generateId(),
+              type: "paragraph",
+              content: textContent,
+            });
+          }
+      }
+    } else if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.trim();
+      if (text) {
+        blocks.push({ id: generateId(), type: "paragraph", content: text });
+      }
+    }
+  };
+
+  Array.from(doc.body.childNodes).forEach(traverse);
+
+  // If no blocks were parsed, return a default paragraph
+  if (blocks.length === 0) {
+    blocks.push({ id: generateId(), type: "paragraph", content: "" });
+  }
+
+  return blocks;
+}
+
+function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
+  const lines = markdown.split("\n");
+  const blocks: ContentBlock[] = [];
+  let inCodeBlock = false;
+  let codeContent = "";
+  let codeLanguage = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Code blocks
+    if (line.startsWith("```")) {
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        codeLanguage = line.slice(3).trim() || "javascript";
+        codeContent = "";
+      } else {
+        blocks.push({
+          id: generateId(),
+          type: "code",
+          content: codeContent.trim(),
+          metadata: { language: codeLanguage },
+        });
+        inCodeBlock = false;
+        codeContent = "";
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeContent += line + "\n";
+      continue;
+    }
+
+    // Skip empty lines
+    if (!line.trim()) continue;
+
+    // Headings
+    if (line.startsWith("# ")) {
+      blocks.push({
+        id: generateId(),
+        type: "heading1",
+        content: line.slice(2),
+      });
+    } else if (line.startsWith("## ")) {
+      blocks.push({
+        id: generateId(),
+        type: "heading2",
+        content: line.slice(3),
+      });
+    } else if (line.startsWith("### ")) {
+      blocks.push({
+        id: generateId(),
+        type: "heading3",
+        content: line.slice(4),
+      });
+    }
+    // Blockquote
+    else if (line.startsWith("> ")) {
+      blocks.push({ id: generateId(), type: "quote", content: line.slice(2) });
+    }
+    // Unordered list
+    else if (line.match(/^[\*\-\+]\s/)) {
+      blocks.push({
+        id: generateId(),
+        type: "bulletList",
+        content: line.slice(2),
+      });
+    }
+    // Ordered list
+    else if (line.match(/^\d+\.\s/)) {
+      blocks.push({
+        id: generateId(),
+        type: "numberedList",
+        content: line.replace(/^\d+\.\s/, ""),
+      });
+    }
+    // Checklist
+    else if (line.match(/^[\*\-]\s\[[ x]\]\s/)) {
+      const checked = line.includes("[x]");
+      const content = line.replace(/^[\*\-]\s\[[ x]\]\s/, "");
+      blocks.push({
+        id: generateId(),
+        type: "checklist",
+        content,
+        metadata: { checked },
+      });
+    }
+    // Image
+    else if (line.match(/!\[.*?\]\(.*?\)/)) {
+      const match = line.match(/!\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        blocks.push({
+          id: generateId(),
+          type: "image",
+          content: match[1],
+          metadata: { url: match[2], alt: match[1] },
+        });
+      }
+    }
+    // Paragraph
+    else {
+      // Remove inline markdown formatting for now
+      const cleanContent = line
+        .replace(/\*\*(.*?)\*\*/g, "$1") // Bold
+        .replace(/\*(.*?)\*/g, "$1") // Italic
+        .replace(/`(.*?)`/g, "$1") // Inline code
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1"); // Links
+      blocks.push({
+        id: generateId(),
+        type: "paragraph",
+        content: cleanContent,
+      });
+    }
+  }
+
+  return blocks.length > 0
+    ? blocks
+    : [{ id: generateId(), type: "paragraph", content: "" }];
 }
 
 /* ------------------------------ Main Editor ------------------------------ */
@@ -93,7 +361,6 @@ export default function BlockEditor({
 
   const deleteBlock = (id: string) => {
     if (blocks.length === 1) {
-      // Don't delete the last block, just clear it
       setBlocks([{ id: generateId(), type: "paragraph", content: "" }]);
       return;
     }
@@ -109,6 +376,88 @@ export default function BlockEditor({
         if (el) placeCaretAtEnd(el);
       }
     }, 50);
+  };
+
+  /* ---------------------------- Paste Handling ---------------------------- */
+
+  const handlePaste = (e: React.ClipboardEvent, blockId: string) => {
+    e.preventDefault();
+
+    const html = e.clipboardData.getData("text/html");
+    const text = e.clipboardData.getData("text/plain");
+
+    // If HTML content is available (copied from websites)
+    if (html && html.trim()) {
+      const newBlocks = parseHtmlToBlocks(html);
+
+      // Replace current block with pasted blocks
+      const index = blocks.findIndex((b) => b.id === blockId);
+      const before = blocks.slice(0, index);
+      const after = blocks.slice(index + 1);
+
+      setBlocks([...before, ...newBlocks, ...after]);
+
+      // Focus first new block
+      setTimeout(() => {
+        if (newBlocks.length > 0) {
+          const el = document.getElementById(`block-${newBlocks[0].id}`);
+          if (el) placeCaretAtEnd(el);
+        }
+      }, 50);
+    }
+    // Try to parse as markdown
+    else if (
+      text.includes("#") ||
+      text.includes("```") ||
+      text.includes("- ") ||
+      text.includes("* ")
+    ) {
+      const newBlocks = parseMarkdownToBlocks(text);
+
+      const index = blocks.findIndex((b) => b.id === blockId);
+      const before = blocks.slice(0, index);
+      const after = blocks.slice(index + 1);
+
+      setBlocks([...before, ...newBlocks, ...after]);
+
+      setTimeout(() => {
+        if (newBlocks.length > 0) {
+          const el = document.getElementById(`block-${newBlocks[0].id}`);
+          if (el) placeCaretAtEnd(el);
+        }
+      }, 50);
+    }
+    // Plain text - insert into current block
+    else {
+      const currentBlock = blocks.find((b) => b.id === blockId);
+      if (currentBlock) {
+        const selection = window.getSelection();
+        const range = selection?.getRangeAt(0);
+        const cursorPosition = range?.startOffset || 0;
+
+        const beforeCursor = currentBlock.content.slice(0, cursorPosition);
+        const afterCursor = currentBlock.content.slice(cursorPosition);
+        const newContent = beforeCursor + text + afterCursor;
+
+        updateBlock(blockId, { content: newContent });
+
+        // Restore cursor position
+        setTimeout(() => {
+          const el = document.getElementById(`block-${blockId}`);
+          if (el && el.firstChild) {
+            const newRange = document.createRange();
+            const newPos = cursorPosition + text.length;
+            newRange.setStart(
+              el.firstChild,
+              Math.min(newPos, newContent.length)
+            );
+            newRange.collapse(true);
+            selection?.removeAllRanges();
+            selection?.addRange(newRange);
+          }
+        }, 0);
+      }
+    }
   };
 
   /* ---------------------------- Keyboard Logic ---------------------------- */
@@ -239,9 +588,14 @@ export default function BlockEditor({
           </div>
           <span className="font-mono text-zinc-600">content-editor.tsx</span>
         </div>
-        <span className="font-mono text-xs text-zinc-600">
-          {blocks.length} {blocks.length === 1 ? "block" : "blocks"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-zinc-600">
+            {blocks.length} {blocks.length === 1 ? "block" : "blocks"}
+          </span>
+          <span className="rounded bg-emerald-500/10 px-2 py-1 font-mono text-xs text-emerald-500">
+            Paste support: HTML/MD
+          </span>
+        </div>
       </div>
 
       {/* Blocks */}
@@ -288,6 +642,7 @@ export default function BlockEditor({
               placeholder={index === 0 ? placeholder : ""}
               onFocus={() => setFocusedId(block.id)}
               onKeyDown={(e) => handleKeyDown(e, block, index)}
+              onPaste={(e) => handlePaste(e, block.id)}
               onUpdate={(updates) => updateBlock(block.id, updates)}
             />
 
@@ -354,14 +709,13 @@ export default function BlockEditor({
   );
 }
 
-/* ------------------------------ BlockContent ----------------------------- */
-
 function BlockContent({
   block,
   index,
   placeholder,
   onUpdate,
   onKeyDown,
+  onPaste,
   onFocus,
 }: {
   block: ContentBlock;
@@ -369,6 +723,7 @@ function BlockContent({
   placeholder?: string;
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  onPaste: (e: React.ClipboardEvent) => void;
   onFocus: () => void;
 }) {
   const handleInput = (e: React.FormEvent<HTMLElement>) => {
@@ -406,6 +761,7 @@ function BlockContent({
     suppressContentEditableWarning: true,
     onInput: handleInput,
     onKeyDown,
+    onPaste,
     onFocus,
     "data-placeholder": placeholder,
     className:
@@ -457,7 +813,7 @@ function BlockContent({
       return (
         <pre
           {...commonProps}
-          className="min-h-[60px] rounded-lg bg-zinc-950 p-4 font-mono text-sm text-emerald-400 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600"
+          className="min-h-[60px] rounded-lg bg-zinc-950 p-4 font-mono text-sm text-emerald-400 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600 whitespace-pre-wrap"
         >
           {block.content}
         </pre>
@@ -557,7 +913,6 @@ function ImageBlock({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Create a local URL for preview
     const localUrl = URL.createObjectURL(file);
     onUpdate({
       metadata: { ...block.metadata, url: localUrl },

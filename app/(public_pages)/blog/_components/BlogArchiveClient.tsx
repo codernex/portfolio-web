@@ -1,35 +1,62 @@
 "use client";
 
-import { Blog } from "@/types";
-import { Calendar, ChevronRight, Clock, Eye, Terminal } from "lucide-react";
+import { Blog, PaginationMeta } from "@/types"; // Ensure meta is imported
+import {
+  Calendar,
+  ChevronRight,
+  Clock,
+  Eye,
+  Terminal,
+  ChevronLeft,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
-export default function BlogArchiveClient({ blogs }: { blogs: Blog[] }) {
+// Receive meta prop from the Container
+export default function BlogArchiveClient({
+  initialBlogs,
+  meta,
+}: {
+  initialBlogs: Blog[];
+  meta: PaginationMeta;
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
+  // 1. Sync search with URL (Debounced)
   useEffect(() => {
-    const params = new URLSearchParams();
+    const delayDebounceFn = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    if (searchQuery) {
-      params.set("q", searchQuery);
-    } else {
-      params.delete("q");
-    }
+      if (searchQuery) {
+        params.set("search", searchQuery); // Changed to 'search' to match DTO
+        params.set("page", "1"); // Reset to page 1 on new search
+      } else {
+        params.delete("search");
+      }
 
-    // Update the URL without a full page refresh
-    // 'scroll: false' keeps the user's position steady
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchQuery, pathname, router]);
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    }, 400); // 400ms debounce to save NestJS resources
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, pathname, router, searchParams]);
+
+  // 2. Navigation Handler
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-300 selection:bg-emerald-500/30 selection:text-emerald-400">
-      <section className="px-6">
+      <section className="px-6 pb-20">
         <div className="container mx-auto max-w-6xl">
-          {/* Search bar styled as a terminal command */}
+          {/* Search bar */}
           <div className="relative mb-12">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
               <span className="font-mono text-emerald-500 mr-2">$</span>
@@ -46,59 +73,38 @@ export default function BlogArchiveClient({ blogs }: { blogs: Blog[] }) {
             />
           </div>
 
-          {/* Blog List */}
+          {/* Blog List Items */}
           <div className="space-y-12">
-            {blogs.map((post) => (
+            {initialBlogs.map((post) => (
               <article key={post.id} className="group relative">
+                {/* ... (Your existing card JSX) */}
                 <div className="flex flex-col md:flex-row gap-8">
                   {/* Metadata Sidebar */}
                   <div className="md:w-36 shrink-0 font-mono text-[11px] text-zinc-600 space-y-2 pt-1 border-r border-zinc-900/50">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-3.5 w-3.5 text-zinc-500" />
+                      <Calendar className="h-3.5 w-3.5" />
                       {new Date(
                         post.publishedAt || post.createdAt
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "2-digit",
-                        year: "numeric",
-                      })}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-zinc-500" />
-                      {post.readingTime} MIN_READ
+                      ).toLocaleDateString()}
                     </div>
                     <div className="flex items-center gap-2 text-emerald-500/60">
-                      <Eye className="h-3.5 w-3.5" />
-                      {post.views.toLocaleString()} HITS
+                      <Eye className="h-3.5 w-3.5" /> {post.views} HITS
                     </div>
                   </div>
 
-                  {/* Content Area */}
+                  {/* Title and Excerpt */}
                   <div className="flex-grow space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {post.tags?.map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="text-[10px] font-mono text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded bg-emerald-500/5 uppercase tracking-tighter"
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-
                     <Link href={`/blog/${post.slug}`}>
                       <h2 className="text-2xl font-bold text-zinc-100 group-hover:text-emerald-400 transition-colors">
                         {post.title}
                       </h2>
                     </Link>
-
-                    <p className="text-zinc-500 text-sm leading-relaxed max-w-2xl italic">
+                    <p className="text-zinc-500 text-sm max-w-2xl italic">
                       {post.excerpt}
                     </p>
-
                     <Link
                       href={`/blog/${post.slug}`}
-                      className="inline-flex items-center gap-2 pt-2 text-xs font-mono font-bold text-zinc-400 hover:text-emerald-500 transition-colors"
+                      className="inline-flex items-center gap-2 pt-2 text-xs font-mono font-bold text-zinc-400 hover:text-emerald-500"
                     >
                       EXEC_READ_ENTRY <ChevronRight className="h-3 w-3" />
                     </Link>
@@ -106,24 +112,42 @@ export default function BlogArchiveClient({ blogs }: { blogs: Blog[] }) {
                 </div>
               </article>
             ))}
-
-            {blogs.length === 0 && (
-              <div className="py-20 text-center rounded-lg border border-dashed border-zinc-900 bg-zinc-950">
-                <Terminal className="mx-auto h-8 w-8 text-zinc-700 mb-4" />
-                <p className="font-mono text-sm text-zinc-600 uppercase">
-                  Error 404: No entries found matching payload.
-                </p>
-              </div>
-            )}
           </div>
+
+          {/* SYSTEM PAGINATION FOOTER */}
+          {meta.totalPages > 1 && (
+            <div className="mt-20 flex items-center justify-between border-t border-zinc-900 pt-10">
+              <div className="font-mono text-[10px] text-zinc-600 uppercase tracking-widest">
+                Buffer_Index: {meta.page} / {meta.totalPages}{" "}
+                {" // Total_Nodes:"}
+                {meta.total}
+              </div>
+
+              <div className="flex gap-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 border-zinc-800 bg-zinc-900 text-emerald-500 disabled:opacity-20"
+                  onClick={() => handlePageChange(meta.page - 1)}
+                  disabled={meta.page <= 1}
+                >
+                  <ChevronLeft size={20} />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 border-zinc-800 bg-zinc-900 text-emerald-500 disabled:opacity-20"
+                  onClick={() => handlePageChange(meta.page + 1)}
+                  disabled={meta.page >= meta.totalPages}
+                >
+                  <ChevronRight size={20} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
-
-      <footer className="py-12 border-t border-zinc-900 bg-zinc-950/30">
-        <div className="container mx-auto px-6 text-center font-mono text-[10px] text-zinc-400 uppercase tracking-[0.4em]">
-          End of Output — {blogs.length} Records Scanned
-        </div>
-      </footer>
     </main>
   );
 }

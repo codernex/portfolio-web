@@ -169,7 +169,7 @@ export default async function BlogDetailPage({ params }: PageProps) {
         {/* Hero Image */}
         <div className="mb-12 aspect-[21/9] w-full overflow-hidden rounded-xl border border-zinc-900 bg-zinc-900/50">
           <img
-            src={post.featuredImage}
+            src={post?.featuredImage || ""}
             alt={post.title}
             className="h-full w-full object-cover opacity-90 grayscale hover:grayscale-0 transition-all duration-700"
           />

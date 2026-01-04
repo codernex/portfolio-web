@@ -42,7 +42,6 @@ export default function ExperienceForm({
   onSuccess,
 }: ExperienceFormProps) {
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
     defaultValues: initialData || {
       role: "",
       company: "",
@@ -62,7 +61,7 @@ export default function ExperienceForm({
   } = useFieldArray({
     control: form.control,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: "responsibilities" as any,
+    name: "responsibilities" as never,
   });
 
   const onSubmit = async (values: FormValues) => {

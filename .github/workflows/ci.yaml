@@ -10,51 +10,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the repository
+      # 1. Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2. Setup Node.js on CI runner (optional)
+      # 2. Setup Node (CI only, EC2 has its own)
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: "20"
 
-      # 3. Copy full project (except node_modules) to EC2
+      # 3. Copy project to EC2 (exclude node_modules & .git)
       - name: Copy project to EC2
-        uses: appleboy/scp-action@v0.1.4
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           port: 22
-          source: "*,.next,.gitignore"
-          exclude: "node_modules"
+          source: "."
           target: "/home/${{ secrets.EC2_USER }}/apps/web"
+          rm: true
+          exclude: |
+            node_modules
+            .git
+            .github
 
-      # 4. Build and restart on EC2
+      # 4. Build & restart app on EC2
       - name: Build and restart frontend on EC2
-        uses: appleboy/ssh-action@v0.1.5
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           port: 22
           script: |
-            # Load NVM if it exists
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-            # Or if Node is installed globally, add to PATH
-            export PATH="/usr/local/bin:/usr/bin:$PATH"
-
-            # Verify npm is available
-            which npm || (echo "npm not found in PATH" && exit 1)
+            set -e
 
             cd ~/apps/web
 
-            # Install dependencies, build, and restart PM2
-            npm install --production
+            # Load NVM
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            # Ensure node/npm
+            node -v
+            npm -v
+
+            # Ensure PM2 exists
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
+
+            # Create env file
+            cat > .env.production <<EOF
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_S3_BASE_URL=${{ secrets.NEXT_PUBLIC_S3_BASE_URL }}
+            EOF
+
+            # Install deps & build
+            npm install
             npm run build
-            pm2 restart web || pm2 start npm --name "web" -- start
+
+            # Restart app
+            pm2 delete web || true
+            pm2 start npm --name "web" -- start
             pm2 save

@@ -1,38 +1,41 @@
 "use client";
 
 import { Command, Mail, MapPin, Phone, Send, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+
+async function contactAction(prevState: unknown, formData: FormData) {
+  const name = formData.get("name");
+  const email = formData.get("email");
+  const message = formData.get("message");
+  const subject = formData.get("subject");
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact`, {
+      method: "POST",
+      body: JSON.stringify({ name, email, message, subject }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) throw new Error("Transmission failed");
+
+    return { success: true, message: "Payload delivered successfully." };
+  } catch (err) {
+    return { success: false, message: "Connection error. Retry handshake." };
+  }
+}
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
-  const [isTransmitting, setIsTransmitting] = useState(false);
+  const [state, formAction, isPending] = useActionState(contactAction, null);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([
     "System ready for input...",
     "Secure SSL connection established.",
   ]);
 
-  const addLog = (msg: string) => {
-    setTerminalLogs((prev) => [...prev.slice(-4), `> ${msg}`]);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsTransmitting(true);
-    addLog("Initializing handshake...");
-
-    // Simulate API call to your NestJS backend
-    setTimeout(() => {
-      addLog("Payload encrypted.");
-      addLog("Transmission successful. Status: 200 OK");
-      setIsTransmitting(false);
-      setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 1500);
-  };
+  useEffect(() => {
+    if (state?.message) {
+      setTerminalLogs((prev) => [...prev, state.message]);
+    }
+  }, [state]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-300 selection:bg-emerald-500/30 selection:text-emerald-400">
@@ -64,9 +67,7 @@ export default function ContactPage() {
                     <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
                       Base_Location
                     </p>
-                    <p className="text-zinc-200">
-                      Khulna, Bangladesh
-                    </p>
+                    <p className="text-zinc-200">Khulna, Bangladesh</p>
                   </div>
                 </div>
 
@@ -78,9 +79,7 @@ export default function ContactPage() {
                     <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
                       Email_Address
                     </p>
-                    <p className="text-zinc-200">
-                      borhan.dev@gmail.com
-                    </p>
+                    <p className="text-zinc-200">borhan.dev@gmail.com</p>
                   </div>
                 </div>
 
@@ -131,7 +130,7 @@ export default function ContactPage() {
                 </div>
 
                 <form
-                  onSubmit={handleSubmit}
+                  action={formAction}
                   className="p-8 grid gap-6 sm:grid-cols-2"
                 >
                   <div className="space-y-2">
@@ -141,10 +140,7 @@ export default function ContactPage() {
                     <input
                       required
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 focus:border-emerald-500/50 focus:outline-none transition-all"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
+                      name="name"
                       placeholder="John Doe"
                     />
                   </div>
@@ -156,10 +152,7 @@ export default function ContactPage() {
                       required
                       type="email"
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 focus:border-emerald-500/50 focus:outline-none transition-all"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      name="email"
                       placeholder="user@domain.com"
                     />
                   </div>
@@ -170,10 +163,7 @@ export default function ContactPage() {
                     <input
                       required
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 focus:border-emerald-500/50 focus:outline-none transition-all"
-                      value={formData.subject}
-                      onChange={(e) =>
-                        setFormData({ ...formData, subject: e.target.value })
-                      }
+                      name="subject"
                       placeholder="Backend Architecture Query"
                     />
                   </div>
@@ -185,10 +175,7 @@ export default function ContactPage() {
                       required
                       rows={5}
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 focus:border-emerald-500/50 focus:outline-none transition-all resize-none"
-                      value={formData.message}
-                      onChange={(e) =>
-                        setFormData({ ...formData, message: e.target.value })
-                      }
+                      name="message"
                       placeholder="Type your transmission here..."
                     />
                   </div>
@@ -196,10 +183,10 @@ export default function ContactPage() {
                   <div className="sm:col-span-2">
                     <button
                       type="submit"
-                      disabled={isTransmitting}
+                      disabled={isPending}
                       className="group flex w-full items-center justify-center gap-3 rounded-lg bg-emerald-500 py-4 font-mono text-sm font-bold text-black hover:bg-emerald-400 transition-all active:scale-[0.98] disabled:opacity-50"
                     >
-                      {isTransmitting ? (
+                      {isPending ? (
                         <>TRANSMITTING...</>
                       ) : (
                         <>

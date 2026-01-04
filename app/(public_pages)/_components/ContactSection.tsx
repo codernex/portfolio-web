@@ -10,14 +10,11 @@ async function contactAction(prevState: any, formData: FormData) {
   const message = formData.get("message");
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/contact`,
-      {
-        method: "POST",
-        body: JSON.stringify({ name, email, message }),
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact`, {
+      method: "POST",
+      body: JSON.stringify({ name, email, message }),
+      headers: { "Content-Type": "application/json" },
+    });
 
     if (!response.ok) throw new Error("Transmission failed");
 

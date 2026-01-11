@@ -12,7 +12,7 @@ export default function AboutSection() {
         <div className="grid gap-12 md:grid-cols-2">
           <div className="space-y-4 text-zinc-400">
             <p>
-              {` I'm a passionate developer with 5+ years of experience building
+              {` I'm a passionate developer with 4+ years of experience building
               web applications that users love. My journey started with a simple
               "Hello World" and evolved into architecting complex distributed
               systems.`}

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { ChevronDown, Github, Linkedin, Twitter, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function HeroSection() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -136,12 +137,18 @@ export default function HeroSection() {
             size="lg"
             className="group relative overflow-hidden bg-emerald-500 text-black hover:bg-emerald-400"
           >
-            <span className="relative z-10">View My Work</span>
-            <div className="absolute inset-0 -z-0 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-0 transition-opacity group-hover:opacity-100" />
+            <Link href={"/projects"}>
+              <span className="relative z-10">View My Work</span>
+              <div className="absolute inset-0 -z-0 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-0 transition-opacity group-hover:opacity-100" />
+            </Link>
           </Button>
 
           <Button
             size="lg"
+            onClick={() => {
+              window.location.href =
+                "https://drive.google.com/uc?export=download&id=1ZlBM8IQYLRkQvytvPWZNpSbsPq3OrqSo";
+            }}
             variant="outline"
             className="border-zinc-700 bg-transparent hover:bg-zinc-900 hover:text-white cursor-pointer"
           >

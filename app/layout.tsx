@@ -60,6 +60,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+      </head>
       <body {...geistMono.style} className="bg-zinc-950">
         <SessionProvider>{children}</SessionProvider>
         <Toaster />

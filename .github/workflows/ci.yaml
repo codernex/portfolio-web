@@ -67,6 +67,7 @@ jobs:
             AUTH_SECRET=${{ secrets.AUTH_SECRET }}
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_S3_BASE_URL=${{ secrets.NEXT_PUBLIC_S3_BASE_URL }}
+            AUTH_TRUST_HOST=${{secrets.AUTH_TRUST_HOST}}
             EOF
 
             # Install deps & build

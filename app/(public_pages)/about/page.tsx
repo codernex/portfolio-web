@@ -59,7 +59,7 @@ export default function AboutPage() {
               </div>
 
               {/* Education Section */}
-              <div className="pt-8 border-t border-zinc-900">
+              {/* <div className="pt-8 border-t border-zinc-900">
                 <div className="flex items-center gap-3 mb-6">
                   <GraduationCap className="text-emerald-500" />
                   <h2 className="text-2xl font-bold text-white">Education</h2>
@@ -75,7 +75,7 @@ export default function AboutPage() {
                     Started: February 2025
                   </p>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Right Column: System Specs */}

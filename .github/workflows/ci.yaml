@@ -1,81 +1,81 @@
-name: Deploy Next.js Frontend to EC2
+# name: Deploy Next.js Frontend to EC2
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-      # 1. Checkout repository
-      - name: Checkout code
-        uses: actions/checkout@v4
+#     steps:
+#       # 1. Checkout repository
+#       - name: Checkout code
+#         uses: actions/checkout@v4
 
-      # 2. Setup Node (CI only, EC2 has its own)
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+#       # 2. Setup Node (CI only, EC2 has its own)
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "20"
 
-      # 3. Copy project to EC2 (exclude node_modules & .git)
-      - name: Copy project to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          port: 22
-          source: "."
-          target: "/home/${{ secrets.EC2_USER }}/apps/web"
-          rm: true
-          exclude: |
-            node_modules
-            .git
-            .github
+#       # 3. Copy project to EC2 (exclude node_modules & .git)
+#       - name: Copy project to EC2
+#         uses: appleboy/scp-action@v0.1.7
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_KEY }}
+#           port: 22
+#           source: "."
+#           target: "/home/${{ secrets.EC2_USER }}/apps/web"
+#           rm: true
+#           exclude: |
+#             node_modules
+#             .git
+#             .github
 
-      # 4. Build & restart app on EC2
-      - name: Build and restart frontend on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          port: 22
-          script: |
-            set -e
+#       # 4. Build & restart app on EC2
+#       - name: Build and restart frontend on EC2
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_KEY }}
+#           port: 22
+#           script: |
+#             set -e
 
-            cd ~/apps/web
+#             cd ~/apps/web
 
-            # Load NVM
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+#             # Load NVM
+#             export NVM_DIR="$HOME/.nvm"
+#             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-            # Ensure node/npm
-            node -v
-            npm -v
+#             # Ensure node/npm
+#             node -v
+#             npm -v
 
-            # Ensure PM2 exists
-            if ! command -v pm2 &> /dev/null; then
-              npm install -g pm2
-            fi
+#             # Ensure PM2 exists
+#             if ! command -v pm2 &> /dev/null; then
+#               npm install -g pm2
+#             fi
 
-            # Create env file
-            cat > .env.production <<EOF
-            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_S3_BASE_URL=${{ secrets.NEXT_PUBLIC_S3_BASE_URL }}
-            AUTH_TRUST_HOST=${{secrets.AUTH_TRUST_HOST}}
-            AUTH_URL=${{secrets.AUTH_URL}}
-            EOF
+#             # Create env file
+#             cat > .env.production <<EOF
+#             AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+#             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+#             NEXT_PUBLIC_S3_BASE_URL=${{ secrets.NEXT_PUBLIC_S3_BASE_URL }}
+#             AUTH_TRUST_HOST=${{secrets.AUTH_TRUST_HOST}}
+#             AUTH_URL=${{secrets.AUTH_URL}}
+#             EOF
 
-            # Install deps & build
-            npm install
-            npm run build
+#             # Install deps & build
+#             npm install
+#             npm run build
 
-            # Restart app
-            pm2 delete web || true
-            pm2 start npm --name "web" -- start
-            pm2 save
+#             # Restart app
+#             pm2 delete web || true
+#             pm2 start npm --name "web" -- start
+#             pm2 save

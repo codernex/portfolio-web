@@ -1,31 +1,29 @@
 import axios from "axios";
-import { getSession, signOut } from "next-auth/react";
-import { auth } from "./auth";
+import Cookies from "js-cookie";
+import { AUTH_TOKEN_COOKIE } from "@/auth/config";
+import { getServerToken } from "@/auth/actions";
+import { useAuth } from "@/auth/store"; // Client-side store
+import { clearAuthSession } from "@/auth/actions"; // Server-side clear
 
 export const apiInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
-});
+}) as import("axios").AxiosInstance & {
+  setToken: (token: string | null) => void;
+};
 
-let isRefreshing = false;
+let memoryToken: string | null = null;
+
+apiInstance.setToken = (token: string | null) => {
+  memoryToken = token;
+};
+
 let failedQueue: {
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
 }[] = [];
-
-async function getAccessToken(server: boolean) {
-  if (server) {
-    // Server-side: use auth() with cookies
-    const session = await auth();
-    return session?.accessToken;
-  } else {
-    // Client-side
-    const session = await getSession();
-    return session?.accessToken;
-  }
-}
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -39,10 +37,22 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+async function getAccessToken(server: boolean) {
+  if (memoryToken) return memoryToken;
+  
+  if (server) {
+    // Server-side
+    return await getServerToken();
+  } else {
+    // Client-side
+    return Cookies.get(AUTH_TOKEN_COOKIE) || null;
+  }
+}
+
 // Request interceptor → attach token
 apiInstance.interceptors.request.use(async (config) => {
-  const server = typeof window === "undefined";
-  const token = await getAccessToken(server);
+  const isServer = typeof window === "undefined";
+  const token = await getAccessToken(isServer);
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -60,44 +70,23 @@ apiInstance.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // If refresh already running → queue request
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              resolve(apiInstance(originalRequest));
-            },
-            reject,
-          });
-        });
-      }
-
-      isRefreshing = true;
+      // Handle custom auth logout when a 401 is encountered
+      const isServer = typeof window === "undefined";
 
       try {
-        // 🔥 This triggers jwt() callback → refreshAccessToken()
-        const session = await getSession();
-        console.log("TCL: session", session);
-
-        if (!session?.accessToken) {
-          throw new Error("Session expired");
+        if (!isServer) {
+          // Client-side logout clears cookies and state
+          await useAuth.getState().logout();
+        } else {
+          // Server action to clear session
+          await clearAuthSession();
         }
-
-        processQueue(null, session.accessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${session.accessToken}`;
-
-        return apiInstance(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        await signOut();
         return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
       }
     }
 
     return Promise.reject(error);
-  }
+  },
 );

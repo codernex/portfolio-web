@@ -1,34 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import {
-  Terminal,
-  Lock,
-  User,
-  ShieldCheck,
-  ChevronRight,
-  Loader2,
-} from "lucide-react";
+import { useAuth } from "@/auth/store";
+import { BackendAuthResponse } from "@/auth/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { apiInstance } from "@/lib/axios";
+import { AxiosError } from "axios";
+import {
+  ChevronRight,
+  Loader2,
+  Lock,
+  ShieldCheck,
+  Terminal,
+  User,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const { login } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await signIn("credentials", {
+      const res = await apiInstance.post<BackendAuthResponse>("/auth/login", {
         email,
         password,
-        callbackUrl: "/dashboard", // Adjusted to your admin path
       });
+      // Handle login response with useAuth
+      await login(res.data, "/dashboard");
     } catch (error) {
+      const err = error as AxiosError<{ message: string }>
+      if (err.response?.data?.message) {
+        toast.error(err.response.data.message)
+      } else {
+        toast.error("Authentication failed")
+      }
       console.error("Authentication sequence failed", error);
     } finally {
       setIsLoading(false);

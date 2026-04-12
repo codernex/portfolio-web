@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 import {
   Terminal,
   LayoutDashboard,
@@ -18,11 +17,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/auth/store";
 
 export default function AdminSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
-
+  const { logout } = useAuth();
   const menuItems = [
     {
       name: "Overview",
@@ -134,7 +134,7 @@ export default function AdminSidebar() {
               isCollapsed && "justify-center px-0"
             )}
             onClick={() => {
-              signOut();
+              logout();
             }}
           >
             <LogOut size={20} />

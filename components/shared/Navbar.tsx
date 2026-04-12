@@ -11,7 +11,6 @@ import {
   Terminal,
   X,
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,12 +22,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { useAuth } from "@/auth/store";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
-  const session = useSession();
+  const session = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -59,11 +59,10 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 z-[100] w-full transition-all duration-300 ${
-        scrolled || isOpen
-          ? "border-b border-zinc-800 bg-zinc-950"
-          : "bg-transparent"
-      }`}
+      className={`fixed top-0 z-[100] w-full transition-all duration-300 ${scrolled || isOpen
+        ? "border-b border-zinc-800 bg-zinc-950"
+        : "bg-transparent"
+        }`}
     >
       <div className="container mx-auto max-w-7xl px-6">
         <div className="flex h-16 items-center justify-between">
@@ -93,11 +92,10 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={`relative px-4 py-2 font-mono text-sm font-medium transition-colors ${
-                    isActive
-                      ? "text-emerald-400"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
+                  className={`relative px-4 py-2 font-mono text-sm font-medium transition-colors ${isActive
+                    ? "text-emerald-400"
+                    : "text-zinc-400 hover:text-white"
+                    }`}
                 >
                   <span className="opacity-50 mr-1.5">$</span>
                   {link.label}
@@ -111,11 +109,11 @@ export default function Navbar() {
             <div className="mx-2 h-4 w-[1px] bg-zinc-800" />
 
             {/* Login Button - Desktop */}
-            {session.status === "authenticated" ? (
+            {session.isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-emerald-500/50 bg-emerald-500/10 font-mono text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all outline-none cursor-pointer">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>{session.data?.user?.name || "ADMIN"}</span>
+                  <span>{session.user?.name || "ADMIN"}</span>
                   <ChevronDown size={12} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-zinc-950 border-zinc-800 text-zinc-400 font-mono text-xs w-48">
@@ -133,7 +131,7 @@ export default function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-red-400 hover:bg-red-500/10 hover:text-red-400 cursor-pointer gap-2"
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={() => session.logout()}
                   >
                     <LogOut size={14} /> terminate_session
                   </DropdownMenuItem>
@@ -173,11 +171,10 @@ export default function Navbar() {
 
       {/* Mobile Navigation Drawer */}
       <div
-        className={`fixed inset-0 z-[105] w-full bg-zinc-950 transition-all duration-300 ease-in-out md:hidden ${
-          isOpen
-            ? "translate-y-0 opacity-100 visible"
-            : "-translate-y-full opacity-0 invisible"
-        }`}
+        className={`fixed inset-0 z-[105] w-full bg-zinc-950 transition-all duration-300 ease-in-out md:hidden ${isOpen
+          ? "translate-y-0 opacity-100 visible"
+          : "-translate-y-full opacity-0 invisible"
+          }`}
       >
         <div className="flex flex-col h-full pt-28 pb-12 px-8">
           <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest border-b border-zinc-900 pb-4 mb-8">

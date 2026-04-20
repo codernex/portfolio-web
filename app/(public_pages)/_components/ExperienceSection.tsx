@@ -1,83 +1,23 @@
-"use client";
-
 import { CheckCircle2, Terminal } from "lucide-react";
+import { Experience } from "@/types";
+import { apiInstance } from "@/lib/axios";
 
-export default function ExperienceSection() {
-  const experiences = [
-    {
-      company: "EWWFL (Remote)",
-      role: "Software Engineer II",
-      location: "Tampa, FL",
-      period: "Jan 2025 - Present",
-      responsibilities: [
-        "Led end-to-end migration and integration of payment systems using Stripe and multiple third-party financing APIs.",
-        "Designed and implemented high-performance backend services with TypeScript, TypeORM, Redis, and MongoDB aggregations.",
-        "Automated data ingestion and synchronization pipelines using Gmail API, SFTP, and AWS S3 with robust cron scheduling.",
-        "Optimized frontend performance through SSR conversion, Next.js caching, and RTK Query data fetching.",
-        "Integrated e-commerce workflows with Zoho CRM and internal APIs to maintain data consistency.",
-      ],
-      achievements: [
-        "Improved Lighthouse performance score by 140% (from 45 to 95+).",
-        "Built a fraud-resistant payment validation system, significantly reducing chargeback incidents.",
-        "Developed a session-based abandoned cart recovery system that increased checkout completion rates by over 30%.",
-      ],
-      technologies: [
-        "Next.js",
-        "TypeScript",
-        "TypeORM",
-        "Redis",
-        "Stripe",
-        "AWS S3",
-        "RTK Query",
-      ],
-    },
-    {
-      company: "Softronixs System LTD",
-      role: "Lead Fullstack Developer",
-      location: "Khulna, BD",
-      period: "Feb 2024 - Dec 2024",
-      responsibilities: [
-        "Designed and developed scalable backend architecture for multi-vendor e-commerce and POS systems using Node.js.",
-        "Integrated frontend with Redux and RTK Query to optimize state management and data performance.",
-      ],
-      achievements: [
-        "Improved platform uptime to 99.9% while handling thousands of daily transactions.",
-        "Automated delivery workflows via Ecourier API, reducing manual effort by 40%.",
-      ],
-      technologies: [
-        "Node.js",
-        "RESTful APIs",
-        "Redux",
-        "RTK Query",
-        "Express",
-      ],
-    },
-    {
-      company: "Borno IT",
-      role: "Full-stack Developer",
-      location: "Jashore, BD",
-      period: "Jun 2021 - Jan 2024",
-      responsibilities: [
-        "Developed APIs using Node.js and Express for data integration with MySQL databases.",
-        "Created SPAs with React and Redux for seamless user experience and performance optimization.",
-        "Built and maintained employee management systems covering attendance, performance, and HR workflows.",
-        "Implemented secure authentication and role-based access control for internal applications.",
-      ],
-      achievements: [
-        "Boosted site speed by 20% and client satisfaction by 30% through WordPress optimization.",
-        "Reduced administrative workload by 25% through workflow automation.",
-        "Enhanced HR efficiency by 20% with improved UI/UX and responsive design.",
-      ],
-      technologies: [
-        "React",
-        "Node.js",
-        "MySQL",
-        "WordPress",
-        "Express",
-        "Redux",
-      ],
-    },
-  ];
+async function getExperiences(): Promise<Experience[]> {
+  try {
+    const { data } = await apiInstance.get("/experience");
+    return data?.data || [];
+  } catch (error) {
+    console.error("EXPERIENCE_FETCH_ERROR:", error);
+    return [];
+  }
+}
+
+export default async function ExperienceSection() {
+  const experiences = await getExperiences();
+
+  if (experiences?.length === 0) {
+    return null; // Don't render section if no experiences
+  }
 
   return (
     <section className="relative border-t border-zinc-800 bg-zinc-950 px-6 py-24">
@@ -94,15 +34,14 @@ export default function ExperienceSection() {
         </div>
 
         <div className="relative space-y-12 before:absolute before:left-[11px] before:top-2 before:h-[calc(100%-10px)] before:w-[1px] before:bg-zinc-800 sm:before:left-1/2">
-          {experiences.map((exp, index) => (
+          {experiences?.map((exp, index) => (
             <div key={index} className="group relative">
               {/* Timeline Dot */}
               <div className="absolute left-0 top-2 z-10 h-6 w-6 -translate-x-[1px] rounded-full border-4 border-zinc-950 bg-emerald-500 transition-transform group-hover:scale-125 sm:left-1/2 sm:-ml-3" />
 
               <div
-                className={`relative flex flex-col ${
-                  index % 2 === 0 ? "sm:flex-row-reverse" : "sm:flex-row"
-                } items-center`}
+                className={`relative flex flex-col ${index % 2 === 0 ? "sm:flex-row-reverse" : "sm:flex-row"
+                  } items-center`}
               >
                 <div className="w-full sm:w-1/2" />
 

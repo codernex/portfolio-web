@@ -1,6 +1,8 @@
 "use client";
 
 import { ContentBlock } from "@/types";
+import { Copy, Check } from "lucide-react";
+import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { v4 } from "uuid";
@@ -20,9 +22,19 @@ export default function ContentRenderer({
   if (blocks && blocks.length > 0) {
     return (
       <div className={`space-y-6 ${className}`}>
-        {blocks.map((block, index) => (
-          <BlockRenderer key={index} block={block} />
-        ))}
+        {blocks.map((block, index) => {
+          let listIndex = 1;
+          if (block.type === 'numberedList') {
+            for (let i = index - 1; i >= 0; i--) {
+              if (blocks[i].type === 'numberedList') {
+                listIndex++;
+              } else {
+                break;
+              }
+            }
+          }
+          return <BlockRenderer key={index} block={block} listIndex={listIndex} />;
+        })}
       </div>
     );
   }
@@ -41,7 +53,7 @@ export default function ContentRenderer({
 }
 
 // Block Renderer Component
-function BlockRenderer({ block }: { block: ContentBlock }) {
+function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: number }) {
   switch (block.type) {
     case "heading1":
       return (
@@ -78,32 +90,7 @@ function BlockRenderer({ block }: { block: ContentBlock }) {
       );
 
     case "code":
-      return (
-        <div className="my-6 rounded-lg border border-zinc-800 overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-4 py-2">
-            <div className="flex gap-1.5">
-              <div className="h-3 w-3 rounded-full bg-red-500/80" />
-              <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
-              <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
-            </div>
-            <span className="font-mono text-xs text-zinc-600">
-              {block.metadata?.language || "code"}
-            </span>
-          </div>
-          <SyntaxHighlighter
-            language={block.metadata?.language || "javascript"}
-            style={vscDarkPlus}
-            customStyle={{
-              margin: 0,
-              padding: "1.5rem",
-              background: "#0a0a0a",
-              fontSize: "0.875rem",
-            }}
-          >
-            {block.content}
-          </SyntaxHighlighter>
-        </div>
-      );
+      return <CodeBlockComponent block={block} />;
 
     case "bulletList":
       return (
@@ -118,7 +105,7 @@ function BlockRenderer({ block }: { block: ContentBlock }) {
     case "numberedList":
       return (
         <div className="flex items-start gap-3 my-2">
-          <span className="mt-0.5 font-mono text-sm text-emerald-500">•</span>
+          <span className="mt-0.5 font-mono text-sm text-emerald-500">{listIndex}.</span>
           <p className="flex-1 text-zinc-400 leading-relaxed">
             {block.content}
           </p>
@@ -163,6 +150,52 @@ function BlockRenderer({ block }: { block: ContentBlock }) {
     default:
       return <p className="text-zinc-400 leading-relaxed">{block.content}</p>;
   }
+}
+
+function CodeBlockComponent({ block }: { block: ContentBlock }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(block.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-6 rounded-lg border border-zinc-800 overflow-hidden relative group">
+      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-red-500/80" />
+            <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
+            <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
+          </div>
+          <span className="font-mono text-xs text-zinc-600 ml-2">
+            {block.metadata?.language || "code"}
+          </span>
+        </div>
+        <button
+          onClick={handleCopy}
+          className="text-zinc-500 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+          aria-label="Copy code"
+        >
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={block.metadata?.language || "javascript"}
+        style={vscDarkPlus}
+        customStyle={{
+          margin: 0,
+          padding: "1.5rem",
+          background: "#0a0a0a",
+          fontSize: "0.875rem",
+        }}
+      >
+        {block.content}
+      </SyntaxHighlighter>
+    </div>
+  );
 }
 
 // Helper function to convert HTML to blocks (for backward compatibility)

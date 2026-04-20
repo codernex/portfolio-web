@@ -1,6 +1,7 @@
 import { Project } from "@/types";
 import { ChevronRight, ExternalLink, Github, Zap } from "lucide-react";
 import Link from "next/link";
+import Spotlight from "@/components/ui/Spotlight";
 
 async function getFeaturedProjects(): Promise<Project[]> {
   try {
@@ -48,9 +49,9 @@ export default async function ProjectsSection() {
         <div className="grid gap-8 md:grid-cols-2">
           {projects.length > 0 ? (
             projects.map((project) => (
-              <div
+              <Spotlight
                 key={project.id}
-                className="group relative rounded-2xl border border-zinc-900 bg-zinc-900/10 overflow-hidden hover:border-emerald-500/30 transition-all duration-500"
+                className="group rounded-2xl border border-zinc-900 bg-zinc-900/10 hover:border-emerald-500/30 transition-all duration-500"
               >
                 {/* Visual Preview */}
                 <div className="relative h-56 w-full overflow-hidden border-b border-zinc-900">
@@ -79,14 +80,14 @@ export default async function ProjectsSection() {
                     {project.technologies.map((tech) => (
                       <span
                         key={tech}
-                        className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1 text-[10px] text-zinc-400 font-mono group-hover:border-emerald-500/20 group-hover:text-emerald-500/70 transition-colors"
+                        className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1 text-[10px] text-zinc-400 font-mono group-hover:border-emerald-500/20 group-hover:text-emerald-500/70 transition-colors z-10 relative"
                       >
                         {tech}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between z-10 relative">
                     <div className="flex gap-5">
                       {project.githubUrl && (
                         <a
@@ -116,7 +117,7 @@ export default async function ProjectsSection() {
                     </Link>
                   </div>
                 </div>
-              </div>
+              </Spotlight>
             ))
           ) : (
             <div className="col-span-full py-20 text-center border border-dashed border-zinc-900 rounded-2xl">

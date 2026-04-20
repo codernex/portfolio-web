@@ -1,4 +1,6 @@
 import ContentRenderer from "@/components/ContentRender";
+import ScrollProgress from "@/components/shared/ScrollProgress";
+import ShareButton from "@/components/shared/ShareButton";
 import { Blog } from "@/types";
 import { format } from "date-fns";
 import {
@@ -106,6 +108,7 @@ export default async function BlogDetailPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-300 selection:bg-emerald-500/30 selection:text-emerald-400">
+      <ScrollProgress />
       {/* Sticky Top Header */}
       <header className="sticky top-16 z-40 border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md">
         <div className="container mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
@@ -117,7 +120,10 @@ export default async function BlogDetailPage({ params }: PageProps) {
             <span>cd ../blog</span>
           </Link>
           <div className="flex items-center gap-4 text-zinc-600">
-            <Share2 className="h-4 w-4 cursor-pointer hover:text-emerald-500 transition-colors" />
+            <ShareButton 
+              title={post.title} 
+              url={`https://codernex.dev/blog/${post.slug}`} 
+            />
             <Bookmark className="h-4 w-4 cursor-pointer hover:text-emerald-500 transition-colors" />
           </div>
         </div>

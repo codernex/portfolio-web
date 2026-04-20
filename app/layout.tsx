@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import CustomCursor from "@/components/shared/CustomCursor";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -57,7 +58,8 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
-      <body {...geistMono.style} className="bg-zinc-950">
+      <body {...geistMono.style} className="bg-zinc-950 cursor-default">
+        <CustomCursor />
         {children}
         <Toaster />
       </body>

@@ -334,12 +334,12 @@ export default function BlockEditor({
 
   /* ------------------------------ Block Ops ------------------------------ */
 
-  const addBlock = (afterId: string, type: BlockType = "paragraph") => {
+  const addBlock = (afterId: string, type: BlockType = "paragraph", content: string = "") => {
     const index = blocks.findIndex((b) => b.id === afterId);
     const newBlock: ContentBlock = {
       id: generateId(),
       type,
-      content: "",
+      content,
     };
 
     const newBlocks = [...blocks];
@@ -483,19 +483,78 @@ export default function BlockEditor({
       return;
     }
 
-    // Enter - create new paragraph
+    // Enter - create new paragraph or split
     if (e.key === "Enter" && !e.shiftKey) {
       if (block.type === "code") return; // Allow newlines in code blocks
       e.preventDefault();
-      addBlock(block.id);
+
+      if ((block.type === 'bulletList' || block.type === 'numberedList' || block.type === 'checklist') && block.content === "") {
+        updateBlock(block.id, { type: 'paragraph' });
+        return;
+      }
+
+      const selection = window.getSelection();
+      const range = selection?.getRangeAt(0);
+      let beforeCursor = block.content;
+      let afterCursor = "";
+
+      if (range) {
+        const cursorPosition = range.startOffset;
+        beforeCursor = block.content.slice(0, cursorPosition);
+        afterCursor = block.content.slice(cursorPosition);
+      }
+
+      updateBlock(block.id, { content: beforeCursor });
+
+      const newType = (block.type === 'bulletList' || block.type === 'numberedList' || block.type === 'checklist')
+        ? block.type
+        : 'paragraph';
+
+      addBlock(block.id, newType, afterCursor);
       return;
     }
 
-    // Backspace on empty block
-    if (e.key === "Backspace" && block.content === "" && blocks.length > 1) {
-      e.preventDefault();
-      deleteBlock(block.id);
-      return;
+    // Backspace at start of block
+    if (e.key === "Backspace") {
+      const selection = window.getSelection();
+      const range = selection?.getRangeAt(0);
+
+      if (range && range.startOffset === 0 && range.endOffset === 0) {
+        e.preventDefault();
+
+        if (block.content === "") {
+          if (blocks.length > 1) {
+            deleteBlock(block.id);
+          } else if (block.type !== 'paragraph') {
+            updateBlock(block.id, { type: 'paragraph' });
+          }
+        } else if (index > 0) {
+          const prevBlock = blocks[index - 1];
+          const newContent = prevBlock.content + block.content;
+          updateBlock(prevBlock.id, { content: newContent });
+
+          const newBlocks = blocks.filter((b) => b.id !== block.id);
+          setBlocks(newBlocks);
+
+          setTimeout(() => {
+            const el = document.getElementById(`block-${prevBlock.id}`);
+            if (el) {
+              el.focus();
+              const textNode = el.firstChild || el;
+              try {
+                const newRange = document.createRange();
+                newRange.setStart(textNode, prevBlock.content.length);
+                newRange.collapse(true);
+                selection?.removeAllRanges();
+                selection?.addRange(newRange);
+              } catch (err) {
+                placeCaretAtEnd(el);
+              }
+            }
+          }, 50);
+        }
+        return;
+      }
     }
 
     // Arrow Up
@@ -512,9 +571,9 @@ export default function BlockEditor({
     // Arrow Down
     if (e.key === "ArrowDown" && index < blocks.length - 1) {
       const selection = window.getSelection();
-      const element = e.target as HTMLElement;
-      const textLength = element.textContent?.length || 0;
       const range = selection?.getRangeAt(0);
+      const textNode = range?.startContainer;
+      const textLength = textNode?.textContent?.length || 0;
       if (range && range.startOffset === textLength) {
         e.preventDefault();
         const el = document.getElementById(`block-${blocks[index + 1].id}`);
@@ -600,62 +659,74 @@ export default function BlockEditor({
 
       {/* Blocks */}
       <div className="space-y-2">
-        {blocks.map((block, index) => (
-          <div
-            key={block.id}
-            className={`group relative ${
-              draggedId === block.id ? "opacity-50" : ""
-            }`}
-            draggable
-            onDragStart={() => handleDragStart(block.id)}
-            onDragOver={(e) => handleDragOver(e, block.id)}
-            onDragEnd={handleDragEnd}
-          >
-            {/* Left Controls */}
-            <div className="absolute -left-12 top-0 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {blocks.map((block, index) => {
+          let listIndex = 1;
+          if (block.type === 'numberedList') {
+            for (let i = index - 1; i >= 0; i--) {
+              if (blocks[i].type === 'numberedList') {
+                listIndex++;
+              } else {
+                break;
+              }
+            }
+          }
+          return (
+            <div
+              key={block.id}
+              className={`group relative ${draggedId === block.id ? "opacity-50" : ""
+                }`}
+              draggable
+              onDragStart={() => handleDragStart(block.id)}
+              onDragOver={(e) => handleDragOver(e, block.id)}
+              onDragEnd={handleDragEnd}
+            >
+              {/* Left Controls */}
+              <div className="absolute -left-12 top-0 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                  className="cursor-grab rounded p-1 hover:bg-zinc-800 active:cursor-grabbing"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="h-4 w-4 text-zinc-600" />
+                </button>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById(`block-${block.id}`);
+                    if (!el) return;
+                    const rect = el.getBoundingClientRect();
+                    setMenuPos({ x: rect.left, y: rect.bottom });
+                    setFocusedId(block.id);
+                    setShowMenu(true);
+                  }}
+                  className="rounded p-1 hover:bg-zinc-800"
+                  title="Add block"
+                >
+                  <Plus className="h-4 w-4 text-zinc-600" />
+                </button>
+              </div>
+
+              {/* Block Content */}
+              <BlockContent
+                block={block}
+                index={index}
+                listIndex={listIndex}
+                placeholder={index === 0 ? placeholder : ""}
+                onFocus={() => setFocusedId(block.id)}
+                onKeyDown={(e) => handleKeyDown(e, block, index)}
+                onPaste={(e) => handlePaste(e, block.id)}
+                onUpdate={(updates) => updateBlock(block.id, updates)}
+              />
+
+              {/* Delete Button */}
               <button
-                className="cursor-grab rounded p-1 hover:bg-zinc-800 active:cursor-grabbing"
-                title="Drag to reorder"
+                onClick={() => deleteBlock(block.id)}
+                className="absolute -right-10 top-0 rounded p-1 opacity-0 transition-opacity hover:bg-zinc-800 group-hover:opacity-100"
+                title="Delete block"
               >
-                <GripVertical className="h-4 w-4 text-zinc-600" />
-              </button>
-              <button
-                onClick={() => {
-                  const el = document.getElementById(`block-${block.id}`);
-                  if (!el) return;
-                  const rect = el.getBoundingClientRect();
-                  setMenuPos({ x: rect.left, y: rect.bottom });
-                  setFocusedId(block.id);
-                  setShowMenu(true);
-                }}
-                className="rounded p-1 hover:bg-zinc-800"
-                title="Add block"
-              >
-                <Plus className="h-4 w-4 text-zinc-600" />
+                <Trash2 className="h-4 w-4 text-zinc-600 hover:text-red-500" />
               </button>
             </div>
-
-            {/* Block Content */}
-            <BlockContent
-              block={block}
-              index={index}
-              placeholder={index === 0 ? placeholder : ""}
-              onFocus={() => setFocusedId(block.id)}
-              onKeyDown={(e) => handleKeyDown(e, block, index)}
-              onPaste={(e) => handlePaste(e, block.id)}
-              onUpdate={(updates) => updateBlock(block.id, updates)}
-            />
-
-            {/* Delete Button */}
-            <button
-              onClick={() => deleteBlock(block.id)}
-              className="absolute -right-10 top-0 rounded p-1 opacity-0 transition-opacity hover:bg-zinc-800 group-hover:opacity-100"
-              title="Delete block"
-            >
-              <Trash2 className="h-4 w-4 text-zinc-600 hover:text-red-500" />
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Slash Menu */}
@@ -712,6 +783,7 @@ export default function BlockEditor({
 function BlockContent({
   block,
   index,
+  listIndex,
   placeholder,
   onUpdate,
   onKeyDown,
@@ -720,6 +792,7 @@ function BlockContent({
 }: {
   block: ContentBlock;
   index: number;
+  listIndex?: number;
   placeholder?: string;
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
@@ -836,7 +909,7 @@ function BlockContent({
       return (
         <div className="flex items-start gap-3">
           <span className="font-mono text-sm text-emerald-500">
-            {index + 1}.
+            {listIndex}.
           </span>
           <div
             {...commonProps}
@@ -862,9 +935,8 @@ function BlockContent({
           />
           <div
             {...commonProps}
-            className={`${commonProps.className} min-h-[1.5rem] flex-1 ${
-              block.metadata?.checked ? "line-through opacity-50" : ""
-            }`}
+            className={`${commonProps.className} min-h-[1.5rem] flex-1 ${block.metadata?.checked ? "line-through opacity-50" : ""
+              }`}
           >
             {block.content}
           </div>

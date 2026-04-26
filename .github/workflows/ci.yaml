@@ -75,6 +75,9 @@ jobs:
             npm run build
 
             # Restart app
-            pm2 delete web || true
-            pm2 start npm --name "web" -- start
+            if pm2 list | grep -q "web"; then
+              pm2 restart web
+            else
+              pm2 start npm --name "web" -- start
+            fi
             pm2 save

@@ -9,7 +9,7 @@ async function getFeaturedProjects(): Promise<Project[]> {
       `${process.env.NEXT_PUBLIC_API_URL}/project/featured`,
       {
         next: {
-          revalidate: 3000,
+          revalidate: 300, // ISR: re-fetch every 5 minutes
         },
       }
     );

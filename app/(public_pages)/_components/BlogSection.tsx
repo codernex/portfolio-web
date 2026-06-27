@@ -6,7 +6,9 @@ import Link from "next/link";
 async function getRecentArticles(): Promise<Blog[]> {
   try {
     // Note: Use absolute URL for Server Components
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/blog/recent`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/blog/recent`, {
+      next: { revalidate: 300 }, // ISR: re-fetch every 5 minutes
+    });
     // Based on your previous API structure: { data: { data: Blog[] } }
     const result = await res.json();
     // or { data: Blog[] }. Adjust destructuring accordingly:

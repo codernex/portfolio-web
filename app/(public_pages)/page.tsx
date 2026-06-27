@@ -1,3 +1,6 @@
+// ISR: homepage data sections revalidate every 5 minutes
+export const revalidate = 300;
+
 import { BlogSkeleton } from "@/components/skeletons/BlogSkeleton";
 import { ProjectSkeleton } from "@/components/skeletons/ProjectSkeleton";
 import { Suspense } from "react";

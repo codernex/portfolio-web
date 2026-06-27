@@ -1,5 +1,4 @@
 // app/blog/_components/BlogListContainer.tsx
-import { apiInstance } from "@/lib/axios";
 import { Blog, PaginatedResponse } from "@/types";
 import BlogArchiveClient from "./BlogArchiveClient";
 
@@ -15,18 +14,20 @@ export default async function BlogListContainer({
       if (value) params.append(key, value as string);
     });
   }
-  console.log("TCL: params", params.toString());
 
-  const res = await apiInstance.get<PaginatedResponse<Blog>>(
-    `/blog?${params.toString()}`
+  // Use native fetch for ISR caching (axios bypasses Next.js cache)
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/blog?${params.toString()}`,
+    { next: { revalidate: 300 } }, // ISR: re-fetch every 5 minutes
   );
 
-  const result = res.data;
+  const json = (await res.json()) as PaginatedResponse<Blog>;
+  const result = json.data;
 
   return (
     <BlogArchiveClient
-      initialBlogs={result.data.items}
-      meta={result.data.meta}
+      initialBlogs={result.items}
+      meta={result.meta}
     />
   );
 }

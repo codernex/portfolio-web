@@ -1,6 +1,10 @@
+// ISR: revalidate each project detail every 1 hour
+export const revalidate = 3600;
+// New slugs not yet pre-rendered are SSR'd on first request then cached
+export const dynamicParams = true;
+
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { apiInstance } from "@/lib/axios";
 import { Project } from "@/types";
 import ProjectDetailContent from "./ProjectDetailContent";
 import ProjectDetailSkeleton from "./loading";
@@ -10,11 +14,46 @@ type PageParams = {
   params: Promise<{ slug: string }>;
 };
 
+async function fetchProject(slug: string): Promise<Project | null> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/project/${slug}`,
+      { next: { revalidate: 3600 } },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data: Project };
+    return json.data;
+  } catch {
+    return null;
+  }
+}
+
+/** Pre-render all project slugs at build time. */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/project/slugs`,
+      { next: { revalidate: 3600 } },
+    );
+    if (!res.ok) return [];
+    const result = await res.json();
+    // Expects: { data: string[] } — adjust if your API shape differs
+    const slugs: string[] = result.data ?? [];
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: PageParams): Promise<Metadata> {
   const { slug } = await params;
-  const project = await fetchProjectFromAPI(slug); // Your API call
+  const project = await fetchProject(slug);
+
+  if (!project) {
+    return { title: "Project Not Found | Codernex" };
+  }
 
   return {
     title: `${project.title} | Codernex Project`,
@@ -39,13 +78,8 @@ export default async function ProjectPage({ params }: PageParams) {
 }
 
 async function ProjectFetcher({ slug }: { slug: string }) {
-  const project = await fetchProjectFromAPI(slug);
+  const project = await fetchProject(slug);
   if (!project) return notFound();
 
   return <ProjectDetailContent project={project} />;
 }
-
-const fetchProjectFromAPI = async (slug: string) => {
-  const res = await apiInstance.get<{ data: Project }>(`/project/${slug}`);
-  return res.data.data;
-};

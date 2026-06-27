@@ -1,3 +1,8 @@
+// ISR: revalidate each blog post every 1 hour
+export const revalidate = 3600;
+// New slugs not yet pre-rendered are SSR'd on first request then cached
+export const dynamicParams = true;
+
 import ContentRenderer from "@/components/ContentRender";
 import ScrollProgress from "@/components/shared/ScrollProgress";
 import ShareButton from "@/components/shared/ShareButton";
@@ -34,6 +39,23 @@ async function getBlogPost(slug: string): Promise<Blog | null> {
     return result.data;
   } catch (error) {
     return null;
+  }
+}
+
+/** Pre-render all published blog slugs at build time. */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/blog/slugs`,
+      { next: { revalidate: 3600 } },
+    );
+    if (!res.ok) return [];
+    const result = await res.json();
+    // Expects: { data: string[] }  — adjust if your API shape differs
+    const slugs: string[] = result.data ?? [];
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
   }
 }
 

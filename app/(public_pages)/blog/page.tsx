@@ -1,4 +1,7 @@
 // app/blog/page.tsx
+// ISR: revalidate the blog list every 5 minutes
+export const revalidate = 300;
+
 import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import BlogListContainer from "./_components/BlogListContainer";

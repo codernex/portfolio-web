@@ -1,6 +1,8 @@
+// ISR: revalidate the projects list every 5 minutes
+export const revalidate = 300;
+
 import { Project, PaginatedResponse } from "@/types";
 import ProjectsArchiveClient from "./ProjectsArchiveClient";
-import { apiInstance } from "@/lib/axios";
 
 export const metadata = {
   title: "Engineering Projects | Codernex (Borhan Uddin)",
@@ -19,7 +21,7 @@ export const metadata = {
     description:
       "Deep dives into engineering solutions and architectural patterns.",
     url: "https://codernex.dev/projects",
-    images: [{ url: "/og-projects.jpg", width: 1200, height: 630 }], // Specialized OG image for projects
+    images: [{ url: "/og-projects.jpg", width: 1200, height: 630 }],
   },
 };
 
@@ -30,11 +32,16 @@ export default async function ProjectsArchivePage({
 }) {
   const { page = "1", search = "" } = await searchParams;
 
-  const res = await apiInstance.get<PaginatedResponse<Project>>(
-    `${process.env.NEXT_PUBLIC_API_URL}/project?page=${page}&limit=6&search=${search}`
+  const params = new URLSearchParams({ page, limit: "6", search });
+
+  // Use native fetch so Next.js can apply ISR caching
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/project?${params.toString()}`,
+    { next: { revalidate: 300 } },
   );
 
-  const initialData = res.data; // { items: Project[], meta: PaginationMeta }
+  const json = (await res.json()) as PaginatedResponse<Project>;
+  const initialData = json.data;
 
-  return <ProjectsArchiveClient initialData={initialData.data} />;
+  return <ProjectsArchiveClient initialData={initialData} />;
 }

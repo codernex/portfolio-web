@@ -1,10 +1,15 @@
 import { CheckCircle2, Terminal } from "lucide-react";
 import { Experience } from "@/types";
-import { apiInstance } from "@/lib/axios";
 
 async function getExperiences(): Promise<Experience[]> {
   try {
-    const { data } = await apiInstance.get("/experience");
+    // Use native fetch (not axios) so Next.js ISR caching works
+    // and cookies() is never called during static generation
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/experience`, {
+      next: { revalidate: 300 }, // ISR: re-fetch every 5 minutes
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
     return data?.data || [];
   } catch (error) {
     console.error("EXPERIENCE_FETCH_ERROR:", error);

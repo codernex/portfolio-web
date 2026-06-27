@@ -10,6 +10,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://codernex.dev"),
   title: "Codernex (Borhan Uddin) | Full-Stack Engineer",
   description:
     "Software Engineer II specializing in high-performance backend architecture with NestJS and modern frontend experiences with Next.js.",

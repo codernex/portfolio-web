@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { BlockType, ContentBlock } from "@/types";
@@ -17,7 +18,12 @@ import {
   Type,
   Upload,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { v4 } from "uuid";
 
 interface BlockEditorProps {
@@ -42,6 +48,32 @@ function placeCaretAtEnd(el: HTMLElement) {
   sel?.addRange(range);
 }
 
+function placeCaretAtStart(el: HTMLElement) {
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+function placeCaretAtOffset(el: HTMLElement, offset: number) {
+  el.focus();
+  const textNode = el.firstChild;
+  if (!textNode) {
+    placeCaretAtEnd(el);
+    return;
+  }
+  const range = document.createRange();
+  const safeOffset = Math.min(offset, textNode.textContent?.length || 0);
+  range.setStart(textNode, safeOffset);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
 /* -------------------------- HTML/Markdown Parser ------------------------- */
 
 function parseHtmlToBlocks(html: string): ContentBlock[] {
@@ -55,7 +87,6 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
       const tagName = element.tagName.toLowerCase();
       const textContent = element.textContent?.trim() || "";
 
-      // Skip empty elements
       if (!textContent && !["img", "hr", "br"].includes(tagName)) {
         Array.from(element.childNodes).forEach(traverse);
         return;
@@ -137,33 +168,19 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
           break;
         case "p":
           if (textContent) {
-            // Check if paragraph contains code
-            if (element.querySelector("code")) {
-              const code = element.querySelector("code");
-              if (code && code.textContent) {
-                blocks.push({
-                  id: generateId(),
-                  type: "paragraph",
-                  content: textContent,
-                });
-              }
-            } else {
-              blocks.push({
-                id: generateId(),
-                type: "paragraph",
-                content: textContent,
-              });
-            }
+            blocks.push({
+              id: generateId(),
+              type: "paragraph",
+              content: textContent,
+            });
           }
           break;
         case "div":
         case "article":
         case "section":
-          // Traverse children for container elements
           Array.from(element.childNodes).forEach(traverse);
           break;
         default:
-          // For inline elements or unknown tags, extract text
           if (textContent && !element.closest("ul, ol, pre, code")) {
             blocks.push({
               id: generateId(),
@@ -182,7 +199,6 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
 
   Array.from(doc.body.childNodes).forEach(traverse);
 
-  // If no blocks were parsed, return a default paragraph
   if (blocks.length === 0) {
     blocks.push({ id: generateId(), type: "paragraph", content: "" });
   }
@@ -200,7 +216,6 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Code blocks
     if (line.startsWith("```")) {
       if (!inCodeBlock) {
         inCodeBlock = true;
@@ -224,10 +239,8 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
       continue;
     }
 
-    // Skip empty lines
     if (!line.trim()) continue;
 
-    // Headings
     if (line.startsWith("# ")) {
       blocks.push({
         id: generateId(),
@@ -246,29 +259,21 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
         type: "heading3",
         content: line.slice(4),
       });
-    }
-    // Blockquote
-    else if (line.startsWith("> ")) {
+    } else if (line.startsWith("> ")) {
       blocks.push({ id: generateId(), type: "quote", content: line.slice(2) });
-    }
-    // Unordered list
-    else if (line.match(/^[\*\-\+]\s/)) {
+    } else if (line.match(/^[\*\-\+]\s/)) {
       blocks.push({
         id: generateId(),
         type: "bulletList",
         content: line.slice(2),
       });
-    }
-    // Ordered list
-    else if (line.match(/^\d+\.\s/)) {
+    } else if (line.match(/^\d+\.\s/)) {
       blocks.push({
         id: generateId(),
         type: "numberedList",
         content: line.replace(/^\d+\.\s/, ""),
       });
-    }
-    // Checklist
-    else if (line.match(/^[\*\-]\s\[[ x]\]\s/)) {
+    } else if (line.match(/^[\*\-]\s\[[ x]\]\s/)) {
       const checked = line.includes("[x]");
       const content = line.replace(/^[\*\-]\s\[[ x]\]\s/, "");
       blocks.push({
@@ -277,9 +282,7 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
         content,
         metadata: { checked },
       });
-    }
-    // Image
-    else if (line.match(/!\[.*?\]\(.*?\)/)) {
+    } else if (line.match(/!\[.*?\]\(.*?\)/)) {
       const match = line.match(/!\[(.*?)\]\((.*?)\)/);
       if (match) {
         blocks.push({
@@ -289,15 +292,12 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
           metadata: { url: match[2], alt: match[1] },
         });
       }
-    }
-    // Paragraph
-    else {
-      // Remove inline markdown formatting for now
+    } else {
       const cleanContent = line
-        .replace(/\*\*(.*?)\*\*/g, "$1") // Bold
-        .replace(/\*(.*?)\*/g, "$1") // Italic
-        .replace(/`(.*?)`/g, "$1") // Inline code
-        .replace(/\[(.*?)\]\(.*?\)/g, "$1"); // Links
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/`(.*?)`/g, "$1")
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1");
       blocks.push({
         id: generateId(),
         type: "paragraph",
@@ -328,266 +328,381 @@ export default function BlockEditor({
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
+  // --- Multi-select state ---
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lastClickedIdRef = useRef<string | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  // Ref to always have the latest blocks in callbacks without re-creating them
+  const blocksRef = useRef(blocks);
+  // eslint-disable-next-line react-hooks/refs
+  blocksRef.current = blocks;
+
   useEffect(() => {
     onChange?.(blocks);
   }, [blocks]);
 
+  /* ----------------------------- Selection Ops ----------------------------- */
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const selectBlock = useCallback(
+    (blockId: string, e?: React.MouseEvent) => {
+      if (e?.shiftKey && lastClickedIdRef.current) {
+        // Range select
+        const currentBlocks = blocksRef.current;
+        const startIdx = currentBlocks.findIndex(
+          (b) => b.id === lastClickedIdRef.current
+        );
+        const endIdx = currentBlocks.findIndex((b) => b.id === blockId);
+        if (startIdx !== -1 && endIdx !== -1) {
+          const lo = Math.min(startIdx, endIdx);
+          const hi = Math.max(startIdx, endIdx);
+          const rangeIds = new Set(
+            currentBlocks.slice(lo, hi + 1).map((b) => b.id)
+          );
+          setSelectedIds(rangeIds);
+        }
+      } else {
+        setSelectedIds(new Set());
+        lastClickedIdRef.current = blockId;
+      }
+    },
+    []
+  );
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(blocksRef.current.map((b) => b.id)));
+  }, []);
+
   /* ------------------------------ Block Ops ------------------------------ */
 
-  const addBlock = (afterId: string, type: BlockType = "paragraph", content: string = "") => {
-    const index = blocks.findIndex((b) => b.id === afterId);
-    const newBlock: ContentBlock = {
-      id: generateId(),
-      type,
-      content,
-    };
+  const addBlock = useCallback(
+    (
+      afterId: string,
+      type: BlockType = "paragraph",
+      content: string = ""
+    ) => {
+      const newBlock: ContentBlock = {
+        id: generateId(),
+        type,
+        content,
+      };
 
-    const newBlocks = [...blocks];
-    newBlocks.splice(index + 1, 0, newBlock);
-    setBlocks(newBlocks);
-    setShowMenu(false);
+      setBlocks((prev) => {
+        const index = prev.findIndex((b) => b.id === afterId);
+        const newBlocks = [...prev];
+        newBlocks.splice(index + 1, 0, newBlock);
+        return newBlocks;
+      });
+      setShowMenu(false);
+      clearSelection();
 
-    setTimeout(() => {
-      const el = document.getElementById(`block-${newBlock.id}`);
-      if (el) placeCaretAtEnd(el);
-    }, 50);
-  };
-
-  const updateBlock = (id: string, updates: Partial<ContentBlock>) => {
-    setBlocks((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
-    );
-  };
-
-  const deleteBlock = (id: string) => {
-    if (blocks.length === 1) {
-      setBlocks([{ id: generateId(), type: "paragraph", content: "" }]);
-      return;
-    }
-
-    const index = blocks.findIndex((b) => b.id === id);
-    const newBlocks = blocks.filter((b) => b.id !== id);
-    setBlocks(newBlocks);
-
-    setTimeout(() => {
-      if (index > 0) {
-        const prevBlock = newBlocks[index - 1];
-        const el = document.getElementById(`block-${prevBlock.id}`);
+      setTimeout(() => {
+        const el = document.getElementById(`block-${newBlock.id}`);
         if (el) placeCaretAtEnd(el);
+      }, 50);
+
+      return newBlock.id;
+    },
+    [clearSelection]
+  );
+
+  const updateBlock = useCallback(
+    (id: string, updates: Partial<ContentBlock>) => {
+      setBlocks((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
+      );
+    },
+    []
+  );
+
+  const deleteBlock = useCallback(
+    (id: string) => {
+      setBlocks((prev) => {
+        if (prev.length === 1) {
+          return [{ id: generateId(), type: "paragraph", content: "" }];
+        }
+
+        const index = prev.findIndex((b) => b.id === id);
+        const newBlocks = prev.filter((b) => b.id !== id);
+
+        setTimeout(() => {
+          if (index > 0) {
+            const prevBlock = newBlocks[index - 1];
+            const el = document.getElementById(`block-${prevBlock.id}`);
+            if (el) placeCaretAtEnd(el);
+          } else if (newBlocks.length > 0) {
+            const el = document.getElementById(`block-${newBlocks[0].id}`);
+            if (el) placeCaretAtStart(el);
+          }
+        }, 50);
+
+        return newBlocks;
+      });
+      clearSelection();
+    },
+    [clearSelection]
+  );
+
+  const deleteSelectedBlocks = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    setBlocks((prev) => {
+      const remaining = prev.filter((b) => !selectedIds.has(b.id));
+      if (remaining.length === 0) {
+        return [{ id: generateId(), type: "paragraph", content: "" }];
       }
-    }, 50);
-  };
+      setTimeout(() => {
+        const el = document.getElementById(`block-${remaining[0].id}`);
+        if (el) placeCaretAtStart(el);
+      }, 50);
+      return remaining;
+    });
+    setSelectedIds(new Set());
+  }, [selectedIds]);
 
   /* ---------------------------- Paste Handling ---------------------------- */
 
-  const handlePaste = (e: React.ClipboardEvent, blockId: string) => {
-    e.preventDefault();
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent, blockId: string) => {
+      e.preventDefault();
 
-    const html = e.clipboardData.getData("text/html");
-    const text = e.clipboardData.getData("text/plain");
+      const html = e.clipboardData.getData("text/html");
+      const text = e.clipboardData.getData("text/plain");
 
-    // If HTML content is available (copied from websites)
-    if (html && html.trim()) {
-      const newBlocks = parseHtmlToBlocks(html);
+      if (html && html.trim()) {
+        const newBlocks = parseHtmlToBlocks(html);
+        setBlocks((prev) => {
+          const index = prev.findIndex((b) => b.id === blockId);
+          const before = prev.slice(0, index);
+          const after = prev.slice(index + 1);
+          return [...before, ...newBlocks, ...after];
+        });
 
-      // Replace current block with pasted blocks
-      const index = blocks.findIndex((b) => b.id === blockId);
-      const before = blocks.slice(0, index);
-      const after = blocks.slice(index + 1);
-
-      setBlocks([...before, ...newBlocks, ...after]);
-
-      // Focus first new block
-      setTimeout(() => {
-        if (newBlocks.length > 0) {
-          const el = document.getElementById(`block-${newBlocks[0].id}`);
-          if (el) placeCaretAtEnd(el);
-        }
-      }, 50);
-    }
-    // Try to parse as markdown
-    else if (
-      text.includes("#") ||
-      text.includes("```") ||
-      text.includes("- ") ||
-      text.includes("* ")
-    ) {
-      const newBlocks = parseMarkdownToBlocks(text);
-
-      const index = blocks.findIndex((b) => b.id === blockId);
-      const before = blocks.slice(0, index);
-      const after = blocks.slice(index + 1);
-
-      setBlocks([...before, ...newBlocks, ...after]);
-
-      setTimeout(() => {
-        if (newBlocks.length > 0) {
-          const el = document.getElementById(`block-${newBlocks[0].id}`);
-          if (el) placeCaretAtEnd(el);
-        }
-      }, 50);
-    }
-    // Plain text - insert into current block
-    else {
-      const currentBlock = blocks.find((b) => b.id === blockId);
-      if (currentBlock) {
-        const selection = window.getSelection();
-        const range = selection?.getRangeAt(0);
-        const cursorPosition = range?.startOffset || 0;
-
-        const beforeCursor = currentBlock.content.slice(0, cursorPosition);
-        const afterCursor = currentBlock.content.slice(cursorPosition);
-        const newContent = beforeCursor + text + afterCursor;
-
-        updateBlock(blockId, { content: newContent });
-
-        // Restore cursor position
         setTimeout(() => {
-          const el = document.getElementById(`block-${blockId}`);
-          if (el && el.firstChild) {
-            const newRange = document.createRange();
-            const newPos = cursorPosition + text.length;
-            newRange.setStart(
-              el.firstChild,
-              Math.min(newPos, newContent.length)
-            );
-            newRange.collapse(true);
-            selection?.removeAllRanges();
-            selection?.addRange(newRange);
+          if (newBlocks.length > 0) {
+            const el = document.getElementById(`block-${newBlocks[0].id}`);
+            if (el) placeCaretAtEnd(el);
           }
-        }, 0);
+        }, 50);
+      } else if (
+        text.includes("#") ||
+        text.includes("```") ||
+        text.includes("- ") ||
+        text.includes("* ")
+      ) {
+        const newBlocks = parseMarkdownToBlocks(text);
+        setBlocks((prev) => {
+          const index = prev.findIndex((b) => b.id === blockId);
+          const before = prev.slice(0, index);
+          const after = prev.slice(index + 1);
+          return [...before, ...newBlocks, ...after];
+        });
+
+        setTimeout(() => {
+          if (newBlocks.length > 0) {
+            const el = document.getElementById(`block-${newBlocks[0].id}`);
+            if (el) placeCaretAtEnd(el);
+          }
+        }, 50);
+      } else {
+        // Plain text — insert at cursor using execCommand for natural cursor behavior
+        document.execCommand("insertText", false, text);
       }
-    }
-  };
+    },
+    []
+  );
 
   /* ---------------------------- Keyboard Logic ---------------------------- */
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent,
-    block: ContentBlock,
-    index: number
-  ) => {
-    // ESC
-    if (e.key === "Escape") {
-      setShowMenu(false);
-      return;
-    }
-
-    // Slash command
-    if (e.key === "/" && block.content === "") {
-      e.preventDefault();
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      setMenuPos({ x: rect.left, y: rect.bottom });
-      setFocusedId(block.id);
-      setShowMenu(true);
-      return;
-    }
-
-    // Enter - create new paragraph or split
-    if (e.key === "Enter" && !e.shiftKey) {
-      if (block.type === "code") return; // Allow newlines in code blocks
-      e.preventDefault();
-
-      if ((block.type === 'bulletList' || block.type === 'numberedList' || block.type === 'checklist') && block.content === "") {
-        updateBlock(block.id, { type: 'paragraph' });
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, block: ContentBlock, index: number) => {
+      // ESC — close menu & clear selection
+      if (e.key === "Escape") {
+        setShowMenu(false);
+        clearSelection();
         return;
       }
 
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      let beforeCursor = block.content;
-      let afterCursor = "";
-
-      if (range) {
-        const cursorPosition = range.startOffset;
-        beforeCursor = block.content.slice(0, cursorPosition);
-        afterCursor = block.content.slice(cursorPosition);
+      // Ctrl/Cmd + A — select all blocks
+      if (e.key === "a" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        selectAll();
+        return;
       }
 
-      updateBlock(block.id, { content: beforeCursor });
+      // Delete/Backspace with multi-selection
+      if (
+        (e.key === "Backspace" || e.key === "Delete") &&
+        selectedIds.size > 1
+      ) {
+        e.preventDefault();
+        deleteSelectedBlocks();
+        return;
+      }
 
-      const newType = (block.type === 'bulletList' || block.type === 'numberedList' || block.type === 'checklist')
-        ? block.type
-        : 'paragraph';
+      const el = document.getElementById(`block-${block.id}`);
+      const currentContent = el?.textContent || "";
 
-      addBlock(block.id, newType, afterCursor);
-      return;
-    }
+      // Slash command
+      if (e.key === "/" && currentContent === "") {
+        e.preventDefault();
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        setMenuPos({ x: rect.left, y: rect.bottom });
+        setFocusedId(block.id);
+        setShowMenu(true);
+        return;
+      }
 
-    // Backspace at start of block
-    if (e.key === "Backspace") {
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-
-      if (range && range.startOffset === 0 && range.endOffset === 0) {
+      // Enter — create new paragraph or split
+      if (e.key === "Enter" && !e.shiftKey) {
+        if (block.type === "code") return;
         e.preventDefault();
 
-        if (block.content === "") {
-          if (blocks.length > 1) {
-            deleteBlock(block.id);
-          } else if (block.type !== 'paragraph') {
-            updateBlock(block.id, { type: 'paragraph' });
-          }
-        } else if (index > 0) {
-          const prevBlock = blocks[index - 1];
-          const newContent = prevBlock.content + block.content;
-          updateBlock(prevBlock.id, { content: newContent });
+        const content = el?.textContent || "";
 
-          const newBlocks = blocks.filter((b) => b.id !== block.id);
-          setBlocks(newBlocks);
+        if (
+          (block.type === "bulletList" ||
+            block.type === "numberedList" ||
+            block.type === "checklist") &&
+          content === ""
+        ) {
+          updateBlock(block.id, { type: "paragraph", content: "" });
+          return;
+        }
 
-          setTimeout(() => {
-            const el = document.getElementById(`block-${prevBlock.id}`);
-            if (el) {
-              el.focus();
-              const textNode = el.firstChild || el;
-              try {
-                const newRange = document.createRange();
-                newRange.setStart(textNode, prevBlock.content.length);
-                newRange.collapse(true);
-                selection?.removeAllRanges();
-                selection?.addRange(newRange);
-              } catch (err) {
-                placeCaretAtEnd(el);
+        const selection = window.getSelection();
+        const range = selection?.getRangeAt(0);
+        let beforeCursor = content;
+        let afterCursor = "";
+
+        if (range && el) {
+          const preRange = document.createRange();
+          preRange.selectNodeContents(el);
+          preRange.setEnd(range.startContainer, range.startOffset);
+          const cursorPosition = preRange.toString().length;
+          beforeCursor = content.slice(0, cursorPosition);
+          afterCursor = content.slice(cursorPosition);
+        }
+
+        updateBlock(block.id, { content: beforeCursor });
+        if (el) el.textContent = beforeCursor;
+
+        const newType =
+          block.type === "bulletList" ||
+          block.type === "numberedList" ||
+          block.type === "checklist"
+            ? block.type
+            : "paragraph";
+
+        addBlock(block.id, newType, afterCursor);
+        return;
+      }
+
+      // Backspace at start of block
+      if (e.key === "Backspace") {
+        const selection = window.getSelection();
+        const range = selection?.getRangeAt(0);
+
+        if (range && el) {
+          const preRange = document.createRange();
+          preRange.selectNodeContents(el);
+          preRange.setEnd(range.startContainer, range.startOffset);
+          const cursorAtStart = preRange.toString().length === 0;
+          const isCollapsed = range.collapsed;
+
+          if (cursorAtStart && isCollapsed) {
+            e.preventDefault();
+            const content = el.textContent || "";
+
+            if (content === "") {
+              const currentBlocks = blocksRef.current;
+              if (currentBlocks.length > 1) {
+                deleteBlock(block.id);
+              } else if (block.type !== "paragraph") {
+                updateBlock(block.id, { type: "paragraph" });
               }
+            } else if (index > 0) {
+              const currentBlocks = blocksRef.current;
+              const prevBlock = currentBlocks[index - 1];
+              const prevEl = document.getElementById(
+                `block-${prevBlock.id}`
+              );
+              const prevContent = prevEl?.textContent || prevBlock.content;
+              const mergeOffset = prevContent.length;
+              const newContent = prevContent + content;
+
+              updateBlock(prevBlock.id, { content: newContent });
+              setBlocks((prev) => prev.filter((b) => b.id !== block.id));
+
+              setTimeout(() => {
+                const targetEl = document.getElementById(
+                  `block-${prevBlock.id}`
+                );
+                if (targetEl) {
+                  targetEl.textContent = newContent;
+                  placeCaretAtOffset(targetEl, mergeOffset);
+                }
+              }, 50);
             }
-          }, 50);
-        }
-        return;
-      }
-    }
-
-    // Arrow Up
-    if (e.key === "ArrowUp" && index > 0) {
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      if (range && range.startOffset === 0) {
-        e.preventDefault();
-        const el = document.getElementById(`block-${blocks[index - 1].id}`);
-        if (el) placeCaretAtEnd(el);
-      }
-    }
-
-    // Arrow Down
-    if (e.key === "ArrowDown" && index < blocks.length - 1) {
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      const textNode = range?.startContainer;
-      const textLength = textNode?.textContent?.length || 0;
-      if (range && range.startOffset === textLength) {
-        e.preventDefault();
-        const el = document.getElementById(`block-${blocks[index + 1].id}`);
-        if (el) {
-          el.focus();
-          const newRange = document.createRange();
-          newRange.setStart(el.firstChild || el, 0);
-          newRange.collapse(true);
-          selection?.removeAllRanges();
-          selection?.addRange(newRange);
+            return;
+          }
         }
       }
-    }
-  };
+
+      // Arrow Up
+      if (e.key === "ArrowUp" && index > 0) {
+        const selection = window.getSelection();
+        const range = selection?.getRangeAt(0);
+        if (range && el) {
+          const preRange = document.createRange();
+          preRange.selectNodeContents(el);
+          preRange.setEnd(range.startContainer, range.startOffset);
+          if (preRange.toString().length === 0) {
+            e.preventDefault();
+            const currentBlocks = blocksRef.current;
+            const prevEl = document.getElementById(
+              `block-${currentBlocks[index - 1].id}`
+            );
+            if (prevEl) placeCaretAtEnd(prevEl);
+          }
+        }
+      }
+
+      // Arrow Down
+      if (e.key === "ArrowDown") {
+        const currentBlocks = blocksRef.current;
+        if (index < currentBlocks.length - 1) {
+          const selection = window.getSelection();
+          const range = selection?.getRangeAt(0);
+          if (range && el) {
+            const postRange = document.createRange();
+            postRange.selectNodeContents(el);
+            postRange.setStart(range.endContainer, range.endOffset);
+            if (postRange.toString().length === 0) {
+              e.preventDefault();
+              const nextEl = document.getElementById(
+                `block-${currentBlocks[index + 1].id}`
+              );
+              if (nextEl) placeCaretAtStart(nextEl);
+            }
+          }
+        }
+      }
+    },
+    [
+      selectedIds,
+      deleteSelectedBlocks,
+      selectAll,
+      clearSelection,
+      updateBlock,
+      addBlock,
+      deleteBlock,
+    ]
+  );
 
   /* ------------------------------ Block Menu ------------------------------ */
 
@@ -636,7 +751,7 @@ export default function BlockEditor({
   /* ------------------------------- Rendering ------------------------------ */
 
   return (
-    <div className="relative min-h-[400px] rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
+    <div ref={editorRef} className="relative min-h-[400px] rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
       {/* Editor Header */}
       <div className="mb-6 flex items-center justify-between border-b border-zinc-800 pb-4">
         <div className="flex items-center gap-2 text-xs">
@@ -648,6 +763,23 @@ export default function BlockEditor({
           <span className="font-mono text-zinc-600">content-editor.tsx</span>
         </div>
         <div className="flex items-center gap-3">
+          {selectedIds.size > 1 && (
+            <button
+              onClick={deleteSelectedBlocks}
+              className="flex items-center gap-1.5 rounded bg-red-500/10 px-2.5 py-1 font-mono text-xs text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
+            >
+              <Trash2 className="h-3 w-3" />
+              Delete {selectedIds.size} blocks
+            </button>
+          )}
+          {selectedIds.size > 1 && (
+            <button
+              onClick={clearSelection}
+              className="rounded bg-zinc-800 px-2.5 py-1 font-mono text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-300"
+            >
+              Clear selection
+            </button>
+          )}
           <span className="font-mono text-xs text-zinc-600">
             {blocks.length} {blocks.length === 1 ? "block" : "blocks"}
           </span>
@@ -661,35 +793,49 @@ export default function BlockEditor({
       <div className="space-y-2">
         {blocks.map((block, index) => {
           let listIndex = 1;
-          if (block.type === 'numberedList') {
+          if (block.type === "numberedList") {
             for (let i = index - 1; i >= 0; i--) {
-              if (blocks[i].type === 'numberedList') {
+              if (blocks[i].type === "numberedList") {
                 listIndex++;
               } else {
                 break;
               }
             }
           }
+          const isSelected = selectedIds.has(block.id);
           return (
             <div
               key={block.id}
-              className={`group relative ${draggedId === block.id ? "opacity-50" : ""
-                }`}
+              className={`group relative flex items-start gap-2 rounded-lg px-2 py-1 transition-colors ${
+                draggedId === block.id ? "opacity-50" : ""
+              } ${
+                isSelected
+                  ? "bg-emerald-500/10 ring-1 ring-emerald-500/30"
+                  : "hover:bg-zinc-800/30"
+              }`}
               draggable
               onDragStart={() => handleDragStart(block.id)}
               onDragOver={(e) => handleDragOver(e, block.id)}
               onDragEnd={handleDragEnd}
+              onClick={(e) => {
+                if (e.shiftKey) {
+                  e.preventDefault();
+                  selectBlock(block.id, e);
+                }
+              }}
             >
-              {/* Left Controls */}
-              <div className="absolute -left-12 top-0 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              {/* Left Controls — inside the layout flow */}
+              <div className="flex shrink-0 items-center gap-0.5 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
-                  className="cursor-grab rounded p-1 hover:bg-zinc-800 active:cursor-grabbing"
+                  className="cursor-grab rounded p-0.5 hover:bg-zinc-700 active:cursor-grabbing"
                   title="Drag to reorder"
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   <GripVertical className="h-4 w-4 text-zinc-600" />
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     const el = document.getElementById(`block-${block.id}`);
                     if (!el) return;
                     const rect = el.getBoundingClientRect();
@@ -697,7 +843,7 @@ export default function BlockEditor({
                     setFocusedId(block.id);
                     setShowMenu(true);
                   }}
-                  className="rounded p-1 hover:bg-zinc-800"
+                  className="rounded p-0.5 hover:bg-zinc-700"
                   title="Add block"
                 >
                   <Plus className="h-4 w-4 text-zinc-600" />
@@ -705,27 +851,39 @@ export default function BlockEditor({
               </div>
 
               {/* Block Content */}
-              <BlockContent
-                block={block}
-                index={index}
-                listIndex={listIndex}
-                placeholder={index === 0 ? placeholder : ""}
-                onFocus={() => setFocusedId(block.id)}
-                onKeyDown={(e) => handleKeyDown(e, block, index)}
-                onPaste={(e) => handlePaste(e, block.id)}
-                onUpdate={(updates) => updateBlock(block.id, updates)}
-              />
+              <div className="min-w-0 flex-1">
+                <BlockContent
+                  block={block}
+                  index={index}
+                  listIndex={listIndex}
+                  placeholder={index === 0 ? placeholder : ""}
+                  onFocus={() => {
+                    setFocusedId(block.id);
+                    if (selectedIds.size > 0) {
+                      clearSelection();
+                    }
+                  }}
+                  onKeyDown={(e) => handleKeyDown(e, block, index)}
+                  onPaste={(e) => handlePaste(e, block.id)}
+                  onUpdate={(updates) => updateBlock(block.id, updates)}
+                />
+              </div>
 
-              {/* Delete Button */}
-              <button
-                onClick={() => deleteBlock(block.id)}
-                className="absolute -right-10 top-0 rounded p-1 opacity-0 transition-opacity hover:bg-zinc-800 group-hover:opacity-100"
-                title="Delete block"
-              >
-                <Trash2 className="h-4 w-4 text-zinc-600 hover:text-red-500" />
-              </button>
+              {/* Delete Button — inside the layout flow */}
+              <div className="flex shrink-0 items-center pt-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteBlock(block.id);
+                  }}
+                  className="rounded p-0.5 hover:bg-zinc-700"
+                  title="Delete block"
+                >
+                  <Trash2 className="h-4 w-4 text-zinc-600 hover:text-red-500" />
+                </button>
+              </div>
             </div>
-          )
+          );
         })}
       </div>
 
@@ -780,7 +938,15 @@ export default function BlockEditor({
   );
 }
 
-function BlockContent({
+/* ====================== Ref-based BlockContent Component ====================== */
+
+/**
+ * Key fix: We use a ref to manage the contentEditable text content.
+ * React never re-renders the text children — the DOM handles it natively.
+ * We only imperatively set textContent when the value changes *externally*
+ * (e.g. from paste, type change, or merge), not during normal typing.
+ */
+const BlockContent = React.memo(function BlockContent({
   block,
   index,
   listIndex,
@@ -799,37 +965,62 @@ function BlockContent({
   onPaste: (e: React.ClipboardEvent) => void;
   onFocus: () => void;
 }) {
-  const handleInput = (e: React.FormEvent<HTMLElement>) => {
-    const content = e.currentTarget.textContent || "";
+  const elRef = useRef<HTMLElement | null>(null);
+  // Track the last content we synced to the DOM so we don't fight user typing
+  const lastSyncedContent = useRef<string>(block.content);
 
-    // Save cursor position
-    const selection = window.getSelection();
-    const range = selection?.getRangeAt(0);
-    const startOffset = range?.startOffset || 0;
-    const startContainer = range?.startContainer;
+  // Sync content from React state -> DOM only when it changes externally
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    // Only update DOM if the block.content changed from outside (not from typing)
+    if (block.content !== lastSyncedContent.current) {
+      const isFocused = document.activeElement === el;
+      el.textContent = block.content;
+      lastSyncedContent.current = block.content;
+      if (isFocused) {
+        placeCaretAtEnd(el);
+      }
+    }
+  }, [block.content]);
 
+  // On mount, set initial content
+  useEffect(() => {
+    const el = elRef.current;
+    if (el && block.content && el.textContent !== block.content) {
+      el.textContent = block.content;
+      lastSyncedContent.current = block.content;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleInput = useCallback(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const content = el.textContent || "";
+    lastSyncedContent.current = content;
     onUpdate({ content });
+    // No cursor restoration needed — the DOM keeps the caret naturally
+  }, [onUpdate]);
 
-    // Restore cursor position after React re-render
-    requestAnimationFrame(() => {
-      if (startContainer && selection) {
-        try {
-          const newRange = document.createRange();
-          newRange.setStart(startContainer, startOffset);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        } catch (e) {
-          // If the node is no longer valid, place cursor at end
-          const el = document.getElementById(`block-${block.id}`);
-          if (el) placeCaretAtEnd(el);
+  const setRef = useCallback(
+    (node: HTMLElement | null) => {
+      elRef.current = node;
+      if (node) {
+        if (block.content && node.textContent !== block.content) {
+          node.textContent = block.content;
+          lastSyncedContent.current = block.content;
         }
       }
-    });
-  };
+    },
+    // Only re-run when block.id changes (new block), not on content change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [block.id]
+  );
 
   const commonProps = {
     id: `block-${block.id}`,
+    ref: setRef as any,
     contentEditable: true,
     suppressContentEditableWarning: true,
     onInput: handleInput,
@@ -837,49 +1028,42 @@ function BlockContent({
     onPaste,
     onFocus,
     "data-placeholder": placeholder,
-    className:
-      "w-full outline-none bg-transparent text-zinc-300 empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600",
   };
+
+  const baseClass =
+    "w-full outline-none bg-transparent text-zinc-300 empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600";
 
   switch (block.type) {
     case "heading1":
       return (
         <h1
           {...commonProps}
-          className={`${commonProps.className} text-4xl font-bold text-white`}
-        >
-          {block.content}
-        </h1>
+          className={`${baseClass} text-4xl font-bold text-white`}
+        />
       );
 
     case "heading2":
       return (
         <h2
           {...commonProps}
-          className={`${commonProps.className} text-3xl font-bold text-white`}
-        >
-          {block.content}
-        </h2>
+          className={`${baseClass} text-3xl font-bold text-white`}
+        />
       );
 
     case "heading3":
       return (
         <h3
           {...commonProps}
-          className={`${commonProps.className} text-2xl font-bold text-white`}
-        >
-          {block.content}
-        </h3>
+          className={`${baseClass} text-2xl font-bold text-white`}
+        />
       );
 
     case "quote":
       return (
         <blockquote
           {...commonProps}
-          className={`${commonProps.className} border-l-4 border-emerald-500 pl-4 italic text-zinc-400`}
-        >
-          {block.content}
-        </blockquote>
+          className={`${baseClass} border-l-4 border-emerald-500 pl-4 italic text-zinc-400`}
+        />
       );
 
     case "code":
@@ -887,9 +1071,7 @@ function BlockContent({
         <pre
           {...commonProps}
           className="min-h-[60px] rounded-lg bg-zinc-950 p-4 font-mono text-sm text-emerald-400 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600 whitespace-pre-wrap"
-        >
-          {block.content}
-        </pre>
+        />
       );
 
     case "bulletList":
@@ -898,10 +1080,8 @@ function BlockContent({
           <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
           <div
             {...commonProps}
-            className={`${commonProps.className} min-h-[1.5rem] flex-1`}
-          >
-            {block.content}
-          </div>
+            className={`${baseClass} min-h-[1.5rem] flex-1`}
+          />
         </div>
       );
 
@@ -913,10 +1093,8 @@ function BlockContent({
           </span>
           <div
             {...commonProps}
-            className={`${commonProps.className} min-h-[1.5rem] flex-1`}
-          >
-            {block.content}
-          </div>
+            className={`${baseClass} min-h-[1.5rem] flex-1`}
+          />
         </div>
       );
 
@@ -935,11 +1113,10 @@ function BlockContent({
           />
           <div
             {...commonProps}
-            className={`${commonProps.className} min-h-[1.5rem] flex-1 ${block.metadata?.checked ? "line-through opacity-50" : ""
-              }`}
-          >
-            {block.content}
-          </div>
+            className={`${baseClass} min-h-[1.5rem] flex-1 ${
+              block.metadata?.checked ? "line-through opacity-50" : ""
+            }`}
+          />
         </div>
       );
 
@@ -957,13 +1134,11 @@ function BlockContent({
       return (
         <p
           {...commonProps}
-          className={`${commonProps.className} min-h-[1.5rem]`}
-        >
-          {block.content}
-        </p>
+          className={`${baseClass} min-h-[1.5rem]`}
+        />
       );
   }
-}
+});
 
 /* ------------------------------ Image Block ----------------------------- */
 

@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import ContentRenderer from "@/components/ContentRender";
 
@@ -25,6 +26,11 @@ interface ProjectDetailContentProps {
 export default function ProjectDetailContent({
   project,
 }: ProjectDetailContentProps) {
+  const allImages = [
+    ...(project.thumbnailUrl ? [project.thumbnailUrl] : []),
+    ...(project.images ?? []),
+  ];
+
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-300 selection:bg-emerald-500/30 selection:text-emerald-400">
       {/* Header */}
@@ -95,6 +101,54 @@ export default function ProjectDetailContent({
                 </div>
               </div>
             </div>
+
+            {/* Project Images Gallery */}
+            {allImages.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Cpu className="text-emerald-500" size={18} />
+                  <span className="font-mono text-[10px] text-emerald-500 uppercase tracking-[0.3em]">
+                    Project_Screenshots
+                  </span>
+                  <span className="font-mono text-[10px] text-zinc-600">
+                    [{allImages.length}]
+                  </span>
+                </div>
+                <div
+                  className={`grid gap-4 ${
+                    allImages.length === 1
+                      ? "grid-cols-1"
+                      : "grid-cols-1 md:grid-cols-2"
+                  }`}
+                >
+                  {allImages.map((img, idx) => (
+                    <a
+                      key={idx}
+                      href={img}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`group relative block overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 transition-all hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.08)] ${
+                        idx === 0 && allImages.length > 2
+                          ? "md:col-span-2"
+                          : ""
+                      }`}
+                    >
+                      <Image
+                        src={img}
+                        alt={`${project.title} screenshot ${idx + 1}`}
+                        width={1200}
+                        height={675}
+                        className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="absolute bottom-3 right-3 font-mono text-[9px] text-emerald-500 bg-zinc-950/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        IMG_{String(idx).padStart(3, "0")}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Content blocks */}
             <div className="prose-custom">

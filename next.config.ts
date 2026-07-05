@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         hostname: "ap-south-1.amazonaws.com",
         protocol: "https",
       },
+      {
+        hostname:"codernex.s3.ap-south-1.amazonaws.com",
+        protocol:"https"
+      }
     ],
   },
 };

@@ -121,7 +121,7 @@ export default function Navbar() {
             <div className="mx-1 lg:mx-2 h-4 w-[1px] bg-zinc-800 shrink-0" />
             
             {/* Invoice App Promotion - Adaptive Text */}
-            <a
+            {/* <a
               href="https://invoice.codernex.dev"
               target="_blank"
               rel="noopener noreferrer"
@@ -133,7 +133,7 @@ export default function Navbar() {
               </span>
               <span className="hidden lg:inline">run_invoice_app</span>
               <span className="lg:hidden">invoice_app</span>
-            </a>
+            </a> */}
 
             {/* Social Connect Dropdown */}
             <DropdownMenu>

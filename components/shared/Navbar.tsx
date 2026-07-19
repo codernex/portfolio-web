@@ -121,8 +121,8 @@ export default function Navbar() {
             <div className="mx-1 lg:mx-2 h-4 w-[1px] bg-zinc-800 shrink-0" />
             
             {/* Invoice App Promotion - Adaptive Text */}
-            {/* <a
-              href="https://invoice.codernex.dev"
+            <a
+              href="https://post-scheduler.codernex.dev"
               target="_blank"
               rel="noopener noreferrer"
               className="group relative flex items-center gap-2 px-2 lg:px-3 py-2 font-mono text-[11px] lg:text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-all shrink-0"
@@ -131,9 +131,9 @@ export default function Navbar() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
               </span>
-              <span className="hidden lg:inline">run_invoice_app</span>
-              <span className="lg:hidden">invoice_app</span>
-            </a> */}
+              <span className="hidden lg:inline">run_post_scheduler</span>
+              <span className="lg:hidden">post_scheduler</span>
+            </a>
 
             {/* Social Connect Dropdown */}
             <DropdownMenu>

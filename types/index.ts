@@ -27,7 +27,8 @@ export type BlockType =
   | "quote"
   | "code"
   | "image"
-  | "checklist";
+  | "checklist"
+  | "mermaid";
 
 export interface ContentBlock {
   id: string;

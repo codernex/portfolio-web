@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { v4 } from "uuid";
+import MermaidDiagram from "@/components/shared/MermaidDiagram";
 
 interface ContentRendererProps {
   blocks?: ContentBlock[];
@@ -89,7 +90,13 @@ function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: 
         </blockquote>
       );
 
+    case "mermaid":
+      return <MermaidDiagram chart={block.content} />;
+
     case "code":
+      if (block.metadata?.language?.toLowerCase() === "mermaid") {
+        return <MermaidDiagram chart={block.content} />;
+      }
       return <CodeBlockComponent block={block} />;
 
     case "bulletList":

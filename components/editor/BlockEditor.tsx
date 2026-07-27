@@ -17,6 +17,7 @@ import {
   Trash2,
   Type,
   Upload,
+  Workflow,
 } from "lucide-react";
 import React, {
   useCallback,
@@ -25,6 +26,7 @@ import React, {
   useState,
 } from "react";
 import { v4 } from "uuid";
+import MermaidDiagram from "@/components/shared/MermaidDiagram";
 
 interface BlockEditorProps {
   initialContent?: ContentBlock[];
@@ -222,9 +224,10 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
         codeLanguage = line.slice(3).trim() || "javascript";
         codeContent = "";
       } else {
+        const isMermaid = codeLanguage.toLowerCase() === "mermaid";
         blocks.push({
           id: generateId(),
-          type: "code",
+          type: isMermaid ? "mermaid" : "code",
           content: codeContent.trim(),
           metadata: { language: codeLanguage },
         });
@@ -719,6 +722,7 @@ export default function BlockEditor({
     },
     { type: "quote" as BlockType, label: "Quote", icon: Quote },
     { type: "code" as BlockType, label: "Code", icon: Code },
+    { type: "mermaid" as BlockType, label: "Mermaid Flowchart", icon: Workflow },
     { type: "image" as BlockType, label: "Image", icon: ImageIcon },
     { type: "checklist" as BlockType, label: "Checklist", icon: CheckSquare },
   ];
@@ -1130,6 +1134,16 @@ const BlockContent = React.memo(function BlockContent({
         />
       );
 
+    case "mermaid":
+      return (
+        <MermaidBlockComponent
+          block={block}
+          onUpdate={onUpdate}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
+        />
+      );
+
     default:
       return (
         <p
@@ -1225,6 +1239,67 @@ function ImageBlock({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------ Mermaid Block ----------------------------- */
+
+function MermaidBlockComponent({
+  block,
+  onUpdate,
+  onFocus,
+  onKeyDown,
+}: {
+  block: ContentBlock;
+  onUpdate: (updates: Partial<ContentBlock>) => void;
+  onFocus: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+}) {
+  const [showCode, setShowCode] = useState<boolean>(true);
+  const defaultSyntax = `flowchart TD\n  A[Start] --> B[Process]\n  B --> C[Done]`;
+
+  const content =
+    block.content !== undefined && block.content !== ""
+      ? block.content
+      : defaultSyntax;
+
+  useEffect(() => {
+    if (!block.content) {
+      onUpdate({ content: defaultSyntax });
+    }
+  }, []);
+
+  return (
+    <div
+      className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4"
+      onFocus={onFocus}
+    >
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+        <div className="flex items-center gap-2 font-mono text-xs text-emerald-400">
+          <Workflow className="h-4 w-4" />
+          <span>Mermaid Flowchart Block</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCode(!showCode)}
+          className="rounded bg-zinc-800 px-2.5 py-1 font-mono text-xs text-zinc-300 transition-colors hover:bg-zinc-700"
+        >
+          {showCode ? "Hide Code Editor" : "Edit Code"}
+        </button>
+      </div>
+
+      {showCode && (
+        <textarea
+          value={block.content}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          onKeyDown={onKeyDown}
+          placeholder="Enter Mermaid diagram code (e.g. flowchart TD...)"
+          className="min-h-[120px] w-full resize-y rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-xs text-emerald-400 focus:border-emerald-500 focus:outline-none"
+        />
+      )}
+
+      <MermaidDiagram chart={content} showControls={false} />
     </div>
   );
 }

@@ -10,6 +10,21 @@ interface MermaidDiagramProps {
   showControls?: boolean;
 }
 
+function autoQuoteMermaidLabels(chart: string): string {
+  let processed = chart;
+  // 1. Quote unquoted cylinder database shapes [(Text with & or ())] -> [("Text")]
+  processed = processed.replace(
+    /\[\(\s*([^"\n\(\)]*?[&()][^"\n\(\)]*?)\s*\)\]/g,
+    '[("$1")]'
+  );
+  // 2. Quote unquoted square bracket labels [Text with & or ()] -> ["Text"]
+  processed = processed.replace(
+    /\[\s*([^"\n\[\]]*?[&()][^"\n\[\]]*?)\s*\]/g,
+    '["$1"]'
+  );
+  return processed;
+}
+
 export default function MermaidDiagram({
   chart,
   className = "",
@@ -59,12 +74,24 @@ export default function MermaidDiagram({
       }
 
       try {
-        // Validate syntax first
-        await mermaid.parse(cleanChart);
+        let chartToRender = cleanChart;
+        try {
+          // Validate syntax first
+          await mermaid.parse(cleanChart);
+        } catch (firstErr) {
+          // Attempt auto-quoting fallback for unquoted special characters (&, (), etc.)
+          const autoQuoted = autoQuoteMermaidLabels(cleanChart);
+          try {
+            await mermaid.parse(autoQuoted);
+            chartToRender = autoQuoted;
+          } catch {
+            throw firstErr;
+          }
+        }
 
         // Unique ID for render
         const renderId = `${elementId}-${Math.random().toString(36).substring(2, 9)}`;
-        const { svg } = await mermaid.render(renderId, cleanChart);
+        const { svg } = await mermaid.render(renderId, chartToRender);
 
         if (isMounted) {
           setSvgContent(svg);

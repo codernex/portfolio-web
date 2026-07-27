@@ -53,13 +53,141 @@ export default function ContentRenderer({
   return null;
 }
 
+// Markdown Table Renderer Component
+function parseMarkdownTable(markdown: string) {
+  const lines = (markdown || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("|") || l.includes("|"));
+
+  if (lines.length === 0) return { headers: [], rows: [] };
+
+  const parsedLines: string[][] = [];
+
+  for (const line of lines) {
+    if (/^\|?(\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?$/.test(line)) {
+      continue;
+    }
+    const cells = line.split("|").map((c) => c.trim());
+    if (cells.length > 0 && cells[0] === "") cells.shift();
+    if (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
+    if (cells.length > 0) {
+      parsedLines.push(cells);
+    }
+  }
+
+  if (parsedLines.length === 0) return { headers: [], rows: [] };
+
+  const headers = parsedLines[0];
+  const rows = parsedLines.slice(1);
+
+  return { headers, rows };
+}
+
+export function MarkdownTableRenderer({ content }: { content: string }) {
+  const { headers, rows } = parseMarkdownTable(content);
+
+  if (headers.length === 0 && rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="my-6 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950/80 shadow-lg">
+      <table className="w-full border-collapse text-left text-sm text-zinc-300">
+        {headers.length > 0 && (
+          <thead className="border-b border-zinc-800 bg-zinc-900/80 font-mono text-xs uppercase text-emerald-400">
+            <tr>
+              {headers.map((header, idx) => (
+                <th key={idx} className="px-6 py-3.5 font-semibold tracking-wider">
+                  <FormattedText text={header} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody className="divide-y divide-zinc-800/60">
+          {rows.map((row, rIdx) => (
+            <tr key={rIdx} className="transition-colors hover:bg-zinc-900/40">
+              {row.map((cell, cIdx) => (
+                <td key={cIdx} className="px-6 py-4">
+                  <FormattedText text={cell} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Inline Markdown Formatter Component
+export function FormattedText({ text }: { text: string }) {
+  if (!text) return null;
+
+  const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g;
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (!part) return null;
+
+        if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+          return (
+            <strong key={index} className="font-bold text-white">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+
+        if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+          return (
+            <em key={index} className="italic text-zinc-300">
+              {part.slice(1, -1)}
+            </em>
+          );
+        }
+
+        if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+          return (
+            <code
+              key={index}
+              className="rounded bg-zinc-900/80 px-1.5 py-0.5 font-mono text-sm text-emerald-400"
+            >
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+
+        const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
+        if (linkMatch) {
+          return (
+            <a
+              key={index}
+              href={linkMatch[2]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 underline decoration-emerald-500/30 underline-offset-4 hover:text-emerald-300 transition-colors"
+            >
+              {linkMatch[1]}
+            </a>
+          );
+        }
+
+        return <span key={index}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 // Block Renderer Component
 function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: number }) {
   switch (block.type) {
     case "heading1":
       return (
         <h1 className="text-4xl font-bold text-white tracking-tight">
-          {block.content}
+          <FormattedText text={block.content} />
         </h1>
       );
 
@@ -67,31 +195,38 @@ function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: 
       return (
         <h2 className="text-3xl font-bold text-white tracking-tight mt-12 mb-4 flex items-center gap-3">
           <span className="h-8 w-1 bg-emerald-500 rounded-full" />
-          {block.content}
+          <FormattedText text={block.content} />
         </h2>
       );
 
     case "heading3":
       return (
         <h3 className="text-2xl font-bold text-white tracking-tight mt-8 mb-3">
-          {block.content}
+          <FormattedText text={block.content} />
         </h3>
       );
 
     case "paragraph":
       return (
-        <p className="text-zinc-400 leading-relaxed text-lg">{block.content}</p>
+        <p className="text-zinc-400 leading-relaxed text-lg">
+          <FormattedText text={block.content} />
+        </p>
       );
 
     case "quote":
       return (
         <blockquote className="border-l-4 border-emerald-500 pl-6 py-2 my-6 italic text-zinc-400 bg-emerald-500/5 rounded-r">
-          <p className="text-lg">{block.content}</p>
+          <p className="text-lg">
+            <FormattedText text={block.content} />
+          </p>
         </blockquote>
       );
 
     case "mermaid":
       return <MermaidDiagram chart={block.content} />;
+
+    case "table":
+      return <MarkdownTableRenderer content={block.content} />;
 
     case "code":
       if (block.metadata?.language?.toLowerCase() === "mermaid") {
@@ -104,7 +239,7 @@ function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: 
         <div className="flex items-start gap-3 my-2">
           <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
           <p className="flex-1 text-zinc-400 leading-relaxed">
-            {block.content}
+            <FormattedText text={block.content} />
           </p>
         </div>
       );
@@ -114,7 +249,7 @@ function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: 
         <div className="flex items-start gap-3 my-2">
           <span className="mt-0.5 font-mono text-sm text-emerald-500">{listIndex}.</span>
           <p className="flex-1 text-zinc-400 leading-relaxed">
-            {block.content}
+            <FormattedText text={block.content} />
           </p>
         </div>
       );
@@ -133,7 +268,7 @@ function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: 
               block.metadata?.checked ? "line-through opacity-50" : ""
             }`}
           >
-            {block.content}
+            <FormattedText text={block.content} />
           </p>
         </div>
       );
@@ -148,14 +283,18 @@ function BlockRenderer({ block, listIndex }: { block: ContentBlock; listIndex?: 
           />
           {block.content && (
             <figcaption className="mt-2 text-center text-sm text-zinc-500">
-              {block.content}
+              <FormattedText text={block.content} />
             </figcaption>
           )}
         </figure>
       );
 
     default:
-      return <p className="text-zinc-400 leading-relaxed">{block.content}</p>;
+      return (
+        <p className="text-zinc-400 leading-relaxed">
+          <FormattedText text={block.content} />
+        </p>
+      );
   }
 }
 

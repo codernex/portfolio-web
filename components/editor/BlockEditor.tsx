@@ -18,6 +18,7 @@ import {
   Type,
   Upload,
   Workflow,
+  Table,
 } from "lucide-react";
 import React, {
   useCallback,
@@ -27,6 +28,7 @@ import React, {
 } from "react";
 import { v4 } from "uuid";
 import MermaidDiagram from "@/components/shared/MermaidDiagram";
+import { MarkdownTableRenderer } from "@/components/ContentRender";
 
 interface BlockEditorProps {
   initialContent?: ContentBlock[];
@@ -168,6 +170,32 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
             },
           });
           break;
+        case "table":
+          const tableRows: string[] = [];
+          element.querySelectorAll("tr").forEach((tr) => {
+            const cells: string[] = [];
+            tr.querySelectorAll("th, td").forEach((cell) => {
+              cells.push(cell.textContent?.trim() || "");
+            });
+            if (cells.length > 0) {
+              tableRows.push(`| ${cells.join(" | ")} |`);
+            }
+          });
+          if (tableRows.length > 0) {
+            if (tableRows.length > 1) {
+              const colCount = Math.max(
+                ...tableRows.map((r) => r.split("|").length - 2)
+              );
+              const sep = `| ${Array(Math.max(1, colCount)).fill("---").join(" | ")} |`;
+              tableRows.splice(1, 0, sep);
+            }
+            blocks.push({
+              id: generateId(),
+              type: "table",
+              content: tableRows.join("\n"),
+            });
+          }
+          break;
         case "p":
           if (textContent) {
             blocks.push({
@@ -244,6 +272,31 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
 
     if (!line.trim()) continue;
 
+    if (
+      line.trim().startsWith("|") ||
+      (line.trim().endsWith("|") && line.includes("|"))
+    ) {
+      let tableContent = line;
+      while (i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        if (
+          nextLine.startsWith("|") ||
+          (nextLine.endsWith("|") && nextLine.includes("|"))
+        ) {
+          tableContent += "\n" + lines[i + 1];
+          i++;
+        } else {
+          break;
+        }
+      }
+      blocks.push({
+        id: generateId(),
+        type: "table",
+        content: tableContent,
+      });
+      continue;
+    }
+
     if (line.startsWith("# ")) {
       blocks.push({
         id: generateId(),
@@ -296,15 +349,10 @@ function parseMarkdownToBlocks(markdown: string): ContentBlock[] {
         });
       }
     } else {
-      const cleanContent = line
-        .replace(/\*\*(.*?)\*\*/g, "$1")
-        .replace(/\*(.*?)\*/g, "$1")
-        .replace(/`(.*?)`/g, "$1")
-        .replace(/\[(.*?)\]\(.*?\)/g, "$1");
       blocks.push({
         id: generateId(),
         type: "paragraph",
-        content: cleanContent,
+        content: line.trim(),
       });
     }
   }
@@ -723,6 +771,7 @@ export default function BlockEditor({
     { type: "quote" as BlockType, label: "Quote", icon: Quote },
     { type: "code" as BlockType, label: "Code", icon: Code },
     { type: "mermaid" as BlockType, label: "Mermaid Flowchart", icon: Workflow },
+    { type: "table" as BlockType, label: "Table", icon: Table },
     { type: "image" as BlockType, label: "Image", icon: ImageIcon },
     { type: "checklist" as BlockType, label: "Checklist", icon: CheckSquare },
   ];
@@ -1144,6 +1193,16 @@ const BlockContent = React.memo(function BlockContent({
         />
       );
 
+    case "table":
+      return (
+        <TableBlockComponent
+          block={block}
+          onUpdate={onUpdate}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
+        />
+      );
+
     default:
       return (
         <p
@@ -1300,6 +1359,67 @@ function MermaidBlockComponent({
       )}
 
       <MermaidDiagram chart={content} showControls={false} />
+    </div>
+  );
+}
+
+/* ------------------------------ Table Block ----------------------------- */
+
+function TableBlockComponent({
+  block,
+  onUpdate,
+  onFocus,
+  onKeyDown,
+}: {
+  block: ContentBlock;
+  onUpdate: (updates: Partial<ContentBlock>) => void;
+  onFocus: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+}) {
+  const [showCode, setShowCode] = useState<boolean>(true);
+  const defaultSyntax = `| Feature | Traditional DAGs | Workflow Engine |\n| --- | --- | --- |\n| Task Definition | Verbose Python | Flowchart Nodes |\n| Execution | Monolithic Worker | Distributed Async |`;
+
+  const content =
+    block.content !== undefined && block.content !== ""
+      ? block.content
+      : defaultSyntax;
+
+  useEffect(() => {
+    if (!block.content) {
+      onUpdate({ content: defaultSyntax });
+    }
+  }, []);
+
+  return (
+    <div
+      className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4"
+      onFocus={onFocus}
+    >
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+        <div className="flex items-center gap-2 font-mono text-xs text-emerald-400">
+          <Table className="h-4 w-4" />
+          <span>Markdown Table Block</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCode(!showCode)}
+          className="rounded bg-zinc-800 px-2.5 py-1 font-mono text-xs text-zinc-300 transition-colors hover:bg-zinc-700"
+        >
+          {showCode ? "Hide Table Text" : "Edit Table Text"}
+        </button>
+      </div>
+
+      {showCode && (
+        <textarea
+          value={block.content}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          onKeyDown={onKeyDown}
+          placeholder="Enter Markdown Table (e.g. | Col 1 | Col 2 |\n| --- | --- |...)"
+          className="min-h-[120px] w-full resize-y rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-xs text-emerald-400 focus:border-emerald-500 focus:outline-none"
+        />
+      )}
+
+      <MarkdownTableRenderer content={content} />
     </div>
   );
 }

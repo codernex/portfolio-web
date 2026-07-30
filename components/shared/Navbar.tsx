@@ -135,6 +135,20 @@ export default function Navbar() {
               <span className="lg:hidden">post_scheduler</span>
             </a>
 
+            <a
+              href="https://workflow.codernex.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative flex items-center gap-2 px-2 lg:px-3 py-2 font-mono text-[11px] lg:text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-all shrink-0"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
+              </span>
+              <span className="hidden lg:inline">run_agents</span>
+              <span className="lg:hidden">run_agents</span>
+            </a>
+
             {/* Social Connect Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 px-2 lg:px-3 py-2 font-mono text-[11px] lg:text-sm font-medium text-zinc-400 hover:text-white outline-none cursor-pointer shrink-0 transition-colors">
@@ -246,14 +260,27 @@ export default function Navbar() {
 
             {/* Mobile App Promotion Card */}
             <a
-              href="https://invoice.codernex.dev"
+              href="https://workflow.codernex.dev"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-between border border-cyan-500/20 bg-cyan-500/5 p-4 rounded-lg group active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-3">
                 <Receipt className="text-cyan-500" size={20} />
-                <span className="font-mono text-cyan-400">Invoice SaaS</span>
+                <span className="font-mono text-cyan-400">Agentic Workflow</span>
+              </div>
+              <ExternalLink size={16} className="text-cyan-800" />
+            </a>
+
+            <a
+              href="https://post-scheduler.codernex.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between border border-cyan-500/20 bg-cyan-500/5 p-4 rounded-lg group active:scale-[0.98] transition-transform"
+            >
+              <div className="flex items-center gap-3">
+                <Receipt className="text-cyan-500" size={20} />
+                <span className="font-mono text-cyan-400">Post Scheduler</span>
               </div>
               <ExternalLink size={16} className="text-cyan-800" />
             </a>

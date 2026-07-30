@@ -147,7 +147,7 @@ export default function HeroSection() {
             size="lg"
             onClick={() => {
               window.location.href =
-                "https://drive.google.com/uc?export=download&id=1ZlBM8IQYLRkQvytvPWZNpSbsPq3OrqSo";
+                "https://docs.google.com/document/d/1JaB1weC9FownnlkekzC8VCehQKQIHSDiuivFpW4sm2U/export?format=pdf";
             }}
             variant="outline"
             className="border-zinc-700 bg-transparent hover:bg-zinc-900 hover:text-white cursor-pointer"

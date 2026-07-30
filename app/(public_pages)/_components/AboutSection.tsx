@@ -13,7 +13,7 @@ import {
 const statItem = staggerItemVariants(12);
 
 const stats = [
-  { key: '"experience":', value: '"4+ years"' },
+  { key: '"experience":', value: '"5+ years"' },
   { key: '"projects":', value: '"50+ completed"' },
   { key: '"clients":', value: '"30+ satisfied"' },
   { key: '"coffee":', value: '"∞ cups"' },
@@ -47,7 +47,7 @@ export default function AboutSection() {
             viewport={defaultViewport}
           >
             <p>
-              {`I'm a passionate developer with 4+ years of experience building
+              {`I'm a passionate developer with 5+ years of experience building
               web applications that users love. My journey started with a simple
               "Hello World" and evolved into architecting complex distributed
               systems.`}
